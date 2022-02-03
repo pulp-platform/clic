@@ -38,7 +38,7 @@ CLICCFGMBITS     0-ceil(lg2(CLICPRIVMODES))    Number of bits implemented for
                                                cliccfg.nmbits
 CLICCFGLBITS     0-ceil(lg2(CLICLEVELS))       Number of bits implemented for
                                                cliccfg.nlbits
-CLICSELHVEC      0-1     (1)                   Selective hardware vectoring supported?
+CLICSELHVEC      0-1     (0-1)                 Selective hardware vectoring supported?
 CLICMTVECALIGN   6-13    (depends on core)     Number of hardwired-zero least
                                                significant bits in mtvec address.
 CLICXNXTI        0-1     (depends on core)     Has xnxti CSR implemented?
@@ -67,6 +67,19 @@ The patch required to use the CV32E40P together with the CLIC lives in this
 [branch](https://github.com/pulp-platform/cv32e40p/tree/clic). The CLIC mode is
 an elaboration time parameter at this moment, but will support a dynamic switch
 at some point.
+
+Here is the summary
+```
+Name             Value
+CLICANDBASIC     0   (dynamic mode under development)
+CLICPRIVMODES    2
+NUM_INTERRUPT    32-256
+CLICINTCTLBITS   0-8
+CLICSELHVEC      1
+CLICMTVECALIGN   8
+CLICXNXTI        0   (partial, under development)
+CLICXCSW         1
+```
 
 ## CLIC and CVA6
 Not supported yet.
