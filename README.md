@@ -1,18 +1,22 @@
 # RISC-V CLIC
-RISC-V Core Local Interrupt Controller (CLIC) is a standardized interrupt
-controller for RISC-V cores subsuming the original RISC-V local interrupt scheme
-(CLINT). It promises pre-emptive, low-latency, vectored, priority/level based
-interrupts.
+RISC-V Core Local Interrupt Controller (CLIC) is an interrupt controller for
+RISC-V cores subsuming the original RISC-V local interrupt scheme (CLINT). It
+promises pre-emptive, low-latency, vectored, priority/level based interrupts.
 
 This IP is meant to be used together with a suitably modified version of a core.
 Currently, a modified version of the
 [CV32E40P](https://github.com/openhwgroup/cv32e40p) is supported.
 
-See [clic.adoc](./doc/clic.adoc) for the detailed specification this IP is based
-on. The specification version in this repository reflects the version this IP is
-based on. For the upstream specification visit
+[Here](./doc/clic.adoc) is the detailed specification this IP is based on. For
+the upstream specification visit
 [this](https://github.com/riscv/riscv-fast-interrupt/blob/master/clic.adoc)
 link.
+
+Note that this IP is based on an intermediate development version of the CLIC
+specification which will still change substantially. This IP will try to track
+the changes of the specification. The [specification document](./doc/clic.adoc)
+in this repository is a snapshot of the upstream specification and the version
+this IP is based on.
 
 ## Features
 
