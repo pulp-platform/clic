@@ -101,8 +101,14 @@ Alternatively, [regtool](https://docs.opentitan.org/doc/rm/register_tool/) can
 be used to generate the register file. For that, go to `src/gen/` and call `make
 all` with the environment variable `REGTOOL` pointing to `regtool.py` of the
 [register_interface](https://github.com/pulp-platform/register_interface)
-repository and `NUM_INTERRUPT` and `CLICINTCTLBITS` appropriately set. Finally,
-make sure your `src_files.yml` or `Bender.yml` points to
+repository and `NUM_INTERRUPT` and `CLICINTCTLBITS` appropriately set. These
+three environment variables can be passed when using make, e.g. 
+
+```console
+    make NUM_INTERRUPT=128 CLICINTCTLBITS=4
+```
+
+Finally, make sure your `src_files.yml` or `Bender.yml` points to
 
 - `src/gen/clic_reg_pkg.sv`
 - `src/gen/clic_reg_top.sv`
