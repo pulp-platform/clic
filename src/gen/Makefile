@@ -17,9 +17,15 @@
 
 # Generate C header and SystemVerilog files
 
+ifndef $(REGTOOL)
 REGTOOL=../../../register_interface/vendor/lowrisc_opentitan/util/regtool.py
+endif
+ifndef $(NUM_INTERRUPT)
 NUM_INTERRUPT=256
+endif
+ifndef $(CLICINTCTLBITSL)
 CLICINTCTLBITS=8
+endif
 
 all: clic_reg_adapater.sv clic.hjson headers srcs
 
@@ -38,4 +44,7 @@ headers: clic.h
 
 clic.h: clic.hjson
 	$(REGTOOL)  --cdefines clic.hjson > clic.h
+
+clean:
+	rm clic.h clic.hjson clic_reg_adapater.sv clic_reg_pkg.sv clic_reg_top.sv
 
