@@ -20,7 +20,7 @@ package:
 
 dependencies:
   common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.21.0 }
-  register_interface: { git: "https://github.com/pulp-platform/common_cells.git", version: 0.3.1 }
+  register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: 0.3.1 }
 
 sources:
     # - src/gen/clic_reg_pkg.sv
