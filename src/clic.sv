@@ -40,7 +40,8 @@ module clic import clic_reg_pkg::*; #(
   input              irq_ready_i,
   output [SRC_W-1:0] irq_id_o,
   output [7:0]       irq_level_o,
-  output logic       irq_shv_o
+  output logic       irq_shv_o,
+  output [1:0]       irq_priv_o
 );
 
   clic_reg2hw_t reg2hw;
@@ -48,6 +49,9 @@ module clic import clic_reg_pkg::*; #(
 
   logic [7:0] intctl [N_SOURCE];
   logic [7:0] irq_max;
+
+  logic [1:0] intmode [N_SOURCE];
+  logic [1:0] irq_mode;
 
   logic [N_SOURCE-1:0] le; // 0: level-sensitive 1: edge-sensitive
   logic [N_SOURCE-1:0] ip;
@@ -76,7 +80,8 @@ module clic import clic_reg_pkg::*; #(
   // generate interrupt depending on ip, ie, level and priority
   clic_target #(
     .N_SOURCE  (N_SOURCE),
-    .PrioWidth (INTCTLBITS)
+    .PrioWidth (INTCTLBITS),
+    .ModeWidth (2)
   ) u_target (
     .clk_i,
     .rst_ni,
@@ -86,13 +91,15 @@ module clic import clic_reg_pkg::*; #(
     .le_i        (le),
 
     .prio_i      (intctl),
+    .mode_i      (intmode),
 
     .claim_o     (claim),
 
     .irq_valid_o,
     .irq_ready_i,
     .irq_id_o,
-    .irq_max_o   (irq_max)
+    .irq_max_o   (irq_max),
+    .irq_mode_o  (irq_mode)
   );
 
   // registers
@@ -122,13 +129,14 @@ module clic import clic_reg_pkg::*; #(
     .reg2hw,
     .hw2reg,
 
-    .intctl_o (intctl),
-    .shv_o    (shv),
-    .ip_sw_o  (ip_sw),
-    .ie_o     (ie),
-    .le_o     (le),
+    .intctl_o  (intctl),
+    .intmode_o (intmode),
+    .shv_o     (shv),
+    .ip_sw_o   (ip_sw),
+    .ie_o      (ie),
+    .le_o      (le),
 
-    .ip_i     (ip)
+    .ip_i      (ip)
     );
 
   // Create level and prio signals with dynamic indexing (#bits are read from
@@ -184,6 +192,36 @@ module clic import clic_reg_pkg::*; #(
       endcase
   end
 
+  // Create mode signal (#bits are read from egisters and stored in logic signals)
+  logic [1:0] nmbits;
+  assign nmbits = reg2hw.cliccfg.nmbits.q;
+
+  logic [1:0] irq_mode_tmp;
+
+  always_comb begin
+      // Get mode of the highest level, highest priority interrupt from
+      // clic_target (still in the form `L-P-1`)
+      irq_mode_tmp = 2'b11;
+      unique case (nmbits)
+        4'h0: begin
+          irq_mode_tmp = 2'b11;
+        end
+        4'h1: begin
+          irq_mode_tmp[1] = irq_mode[1];
+        end
+        4'h2: begin
+          irq_mode_tmp = irq_mode;
+        end
+        4'h3: begin // this is reserved, not sure what to do
+          irq_mode_tmp = irq_mode;
+        end
+        default:
+          irq_mode_tmp = 2'b11;
+      endcase
+  end
+
+
   assign irq_level_o = irq_level_tmp;
+  assign irq_priv_o  = irq_mode_tmp;
 
 endmodule // clic

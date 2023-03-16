@@ -25,6 +25,7 @@ module clic_reg_adapter import clic_reg_pkg::*; #(
   output clic_reg_pkg::clic_hw2reg_t hw2reg,
 
   output logic [7:0]          intctl_o [N_SOURCE],
+  output logic [1:0]          intmode_o [N_SOURCE],
   output logic [N_SOURCE-1:0] shv_o,
   output logic [N_SOURCE-1:0] ip_sw_o,
   output logic [N_SOURCE-1:0] ie_o,
@@ -44,6 +45,7 @@ module clic_reg_adapter import clic_reg_pkg::*; #(
   // implement all modes
   for (genvar i = 0; i < NumSrc; i++) begin : gen_reghw
     assign intctl_o[i] = reg2hw.clicint[i].ctl.q;
+    assign intmode_o[i] = reg2hw.clicint[i].attr_mode.q;
     assign shv_o[i] = reg2hw.clicint[i].attr_shv.q;
     assign ip_sw_o[i] = reg2hw.clicint[i].ip.q;
     assign ie_o[i] = reg2hw.clicint[i].ie.q;
