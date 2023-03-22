@@ -27,9 +27,9 @@ ifndef $(CLICINTCTLBITSL)
 CLICINTCTLBITS=8
 endif
 
-all: clic_reg_adapater.sv clic.hjson headers srcs
+all: clic_reg_adapter.sv clic.hjson headers srcs
 
-clic_reg_adapater.sv: clic_reg_adapter.sv.tpl
+clic_reg_adapter.sv: clic_reg_adapter.sv.tpl
 	./clic.py -s $(NUM_INTERRUPT) -c $(CLICINTCTLBITS) < $< > $@
 
 srcs: clic_reg_pkg.sv clic_reg_top.sv
@@ -46,5 +46,5 @@ clic.h: clic.hjson
 	$(REGTOOL)  --cdefines clic.hjson > clic.h
 
 clean:
-	rm clic.h clic.hjson clic_reg_adapater.sv clic_reg_pkg.sv clic_reg_top.sv
+	rm clic.h clic.hjson clic_reg_adapter.sv clic_reg_pkg.sv clic_reg_top.sv
 
