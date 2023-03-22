@@ -64,7 +64,7 @@ module clic import clic_reg_pkg::*; #(
   // handle incoming interrupts
   clic_gateway #(
     .N_SOURCE   (N_SOURCE)
-  ) u_gateway (
+  ) i_clic_gateway (
     .clk_i,
     .rst_ni,
 
@@ -82,7 +82,7 @@ module clic import clic_reg_pkg::*; #(
     .N_SOURCE  (N_SOURCE),
     .PrioWidth (INTCTLBITS),
     .ModeWidth (2)
-  ) u_target (
+  ) i_clic_target (
     .clk_i,
     .rst_ni,
 
@@ -106,7 +106,7 @@ module clic import clic_reg_pkg::*; #(
   clic_reg_top #(
     .reg_req_t (reg_req_t),
     .reg_rsp_t (reg_rsp_t)
-  ) u_reg (
+  ) i_clic_reg_top (
     .clk_i,
     .rst_ni,
 
@@ -122,7 +122,7 @@ module clic import clic_reg_pkg::*; #(
   clic_reg_adapter #(
     .N_SOURCE   (N_SOURCE),
     .INTCTLBITS (INTCTLBITS)
-  ) u_adapter (
+  ) i_clic_reg_adapter (
     .clk_i,
     .rst_ni,
 
