@@ -43,7 +43,7 @@
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
-        //{ bits: "7", name: "reserved" },
+        { bits: "31:7", name: "reserved", desc: "reserved", swaccess: "ro", hwaccess: "none" },  # workaround for full 32-bit access
         { bits: "6:5", name: "nmbits", desc: "number of privilege mode bits" },
         { bits: "4:1", name: "nlbits", desc: "number of interrupt level bits" },
         { bits: "0", name: "nvbits",
@@ -67,45 +67,25 @@
       ],
     },
     { skipto: "0x1000" }
-% for i in range(src):
-    { name: "CLICINTIP${i}",
-      desc: "CLIC interrupt ${i} pending",
-      swaccess: "rw",
-      hwaccess: "hrw",
-      fields: [
-        { bits: "0" }
-      ],
+    { multireg:
+      { name: "CLICINT",
+	desc: "CLIC interrupt pending, enable, attribute and control",
+	count: "256",
+	cname: "CLIC",
+	swaccess: "rw",
+	hwaccess: "hro",
+	fields: [
+          { bits: "31:24", name: "CTL", desc: "interrupt control for interrupt" },
+          { bits: "23:22", name: "ATTR_MODE", desc: "privilege mode of this interrupt" },
+          //{ bits: "21:19", name: "reserved" },
+          { bits: "18:17", name: "ATTR_TRIG", desc: "specify trigger type for this interrupt" },
+          { bits: "16", name: "ATTR_SHV", desc: "enable hardware vectoring for this interrupt" },
+
+          { bits: "7", name: "IE", desc: "interrupt enable for interrupt" },
+
+          { bits: "0", name: "IP", desc: "interrupt pending for interrupt", hwaccess: "hrw" },
+	],
+      }
     },
-    { name: "CLICINTIE${i}",
-      desc: "CLIC interrupt ${i} enable",
-      swaccess: "rw",
-      hwaccess: "hro",
-      fields: [
-        { bits: "0" }
-      ],
-    },
-    { name: "CLICINTATTR${i}",
-      desc: "CLIC interrupt ${i} attributes",
-      swaccess: "rw",
-      hwaccess: "hro",
-      fields: [
-        { bits: "7:6", name: "mode",
-    desc: "privilege mode of this interrupt" },
-        //{ bits: "5:3", name: "reserved" },
-        { bits: "2:1", name: "trig",
-    desc: "specify trigger type for this interrupt" },
-        { bits: "0", name: "shv",
-    desc: "enable hardware vectoring for this interrupt" },
-      ],
-    },
-    { name: "CLICINTCTL${i}",
-      desc: "CLIC interrupt ${i} control",
-      swaccess: "rw",
-      hwaccess: "hro",
-      fields: [
-        { bits: "7:0" }
-      ],
-    },
-% endfor
   ]
 }
