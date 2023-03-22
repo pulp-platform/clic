@@ -43,13 +43,13 @@ module clic_reg_adapter import clic_reg_pkg::*; #(
   // interrupts atm. Either we hardware the trig.q[1] bit correctly or we
   // implement all modes
   for (genvar i = 0; i < NumSrc; i++) begin : gen_reghw
-    assign intctl_o[i] = reg2hw.clicintctrl[i].q;
-    assign shv_o[i] = reg2hw.clicintattr[i].shv.q;
-    assign ip_sw_o[i] = reg2hw.clicintip[i].q;
-    assign ie_o[i] = reg2hw.clicintie[i].q;
-    assign hw2reg.clicintip[i].de = 1'b1; // Always write
-    assign hw2reg.clicintip[i].d  = ip_i[i];
-    assign le_o[i] = reg2hw.clicintattr[i].trig.q[0];
+    assign intctl_o[i] = reg2hw.clicint[i].ctl.q;
+    assign shv_o[i] = reg2hw.clicint[i].attr_shv.q;
+    assign ip_sw_o[i] = reg2hw.clicint[i].ip.q;
+    assign ie_o[i] = reg2hw.clicint[i].ie.q;
+    assign hw2reg.clicint[i].ip.de = 1'b1; // Always write
+    assign hw2reg.clicint[i].ip.d  = ip_i[i];
+    assign le_o[i] = reg2hw.clicint[i].attr_trig.q[0];
   end
 
 endmodule // clic_reg_adapter
