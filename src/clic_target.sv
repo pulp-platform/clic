@@ -52,7 +52,10 @@ module clic_target #(
   input logic                  irq_ready_i,
   output logic [SrcWidth-1:0]  irq_id_o,
   output logic [PrioWidth-1:0] irq_max_o,
-  output logic [ModeWidth-1:0] irq_mode_o
+  output logic [ModeWidth-1:0] irq_mode_o,
+
+  output logic                 irq_kill_req_o,
+  input logic                  irq_kill_ack_i
 );
 
   // this only works with 2 or more sources
@@ -136,6 +139,7 @@ module clic_target #(
 
   logic irq_valid_d, irq_valid_q;
   logic irq_root_valid;
+  logic irq_kill_req_d, irq_kill_req_q;
   logic [SrcWidth-1:0]  irq_root_id, irq_id_d, irq_id_q;
   logic [PrioWidth-1:0] irq_max_d, irq_max_q;
   logic [ModeWidth-1:0] irq_mode_d, irq_mode_q;
@@ -144,6 +148,10 @@ module clic_target #(
   // TODO: remove useless inequality comparison
   assign irq_root_valid = (max_tree[0] > '0) ? is_tree[0] : 1'b0;
   assign irq_root_id    = (is_tree[0]) ? id_tree[0] : '0;
+
+  // higher level interrupt is available than the one we are currently processing
+  // TODO: maybe add pipe?
+  assign higher_irq = irq_root_id != irq_id_q;
 
   // handshake logic to send interrupt to core
   typedef enum logic [1:0] {
@@ -159,6 +167,7 @@ module clic_target #(
     claim_o = '0;
 
     irq_valid_d = 1'b0;
+    irq_kill_req_d = 1'b0;
 
     irq_state_d = irq_state_q;
 
@@ -186,6 +195,15 @@ module clic_target #(
         end else if (irq_valid_o && irq_ready_i) begin
           irq_valid_d = 1'b0;
           irq_state_d = CLAIM;
+        end else if (higher_irq) begin
+          // we have a potentially higher level interrupt. Try to kill the
+          // current handshake (not irq!) and restart
+          irq_kill_req_d = 1'b1;
+          if (irq_kill_req_o && irq_kill_ack_i) begin
+            irq_kill_req_d = 1'b0;
+            irq_valid_d = 1'b0;
+            irq_state_d = IDLE;
+          end
         end
       end
       // generate interrupt claim pulse
@@ -207,12 +225,14 @@ module clic_target #(
       irq_id_q <= '0;
       irq_max_q <= '0;
       irq_mode_q <= '0;
+      irq_kill_req_q = 1'b0;
       irq_state_q <= IDLE;
     end else begin
       irq_valid_q <= irq_valid_d;
       irq_id_q <= irq_id_d;
       irq_max_q <= irq_max_d;
       irq_mode_q <= irq_mode_d;
+      irq_kill_req_q = irq_kill_req_d;
       irq_state_q <= irq_state_d;
     end
   end
@@ -222,5 +242,7 @@ module clic_target #(
 
   assign irq_max_o = irq_max_q;
   assign irq_mode_o = irq_mode_q;
+
+  assign irq_kill_req_o = irq_kill_req_q;
 
 endmodule

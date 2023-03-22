@@ -41,7 +41,9 @@ module clic import clic_reg_pkg::*; #(
   output logic [SRC_W-1:0] irq_id_o,
   output logic [7:0]       irq_level_o,
   output logic             irq_shv_o,
-  output logic [1:0]       irq_priv_o
+  output logic [1:0]       irq_priv_o,
+  output logic             irq_kill_req_o,
+  input  logic             irq_kill_ack_i
 );
 
   clic_reg2hw_t reg2hw;
@@ -99,7 +101,10 @@ module clic import clic_reg_pkg::*; #(
     .irq_ready_i,
     .irq_id_o,
     .irq_max_o   (irq_max),
-    .irq_mode_o  (irq_mode)
+    .irq_mode_o  (irq_mode),
+
+    .irq_kill_req_o,
+    .irq_kill_ack_i
   );
 
   // registers
