@@ -150,8 +150,8 @@ module clic import clic_reg_pkg::*; #(
 
   always_comb begin
     // Saturate nlbits if nlbits > clicintctlbits (nlbits > 0 && nlbits <= 8)
-    nlbits = ClicIntCtlBits;
-    if (nlbits <= ClicIntCtlBits)
+    nlbits = INTCTLBITS;
+    if (nlbits <= INTCTLBITS)
       nlbits = reg2hw.cliccfg.nlbits.q;
   end
 

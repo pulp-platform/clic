@@ -34,16 +34,10 @@ module clic_reg_adapter import clic_reg_pkg::*; #(
   input logic [N_SOURCE-1:0]  ip_i
 );
 
-  if (N_SOURCE != clic_reg_pkg::NumSrc)
-    $fatal(1, "CLIC misconfigured: clic_reg_pkg::NumSrc needs to match N_SOURCE");
-
-  if (INTCTLBITS != clic_reg_pkg::ClicIntCtlBits)
-    $fatal(1, "CLIC misconfigured: clic_reg_pkg::ClicIntCtlBits needs to match INTCTLBITS");
-
   // We only support positive edge triggered and positive level triggered
   // interrupts atm. Either we hardware the trig.q[1] bit correctly or we
   // implement all modes
-  for (genvar i = 0; i < NumSrc; i++) begin : gen_reghw
+  for (genvar i = 0; i < N_SOURCE; i++) begin : gen_reghw
     assign intctl_o[i] = reg2hw.clicint[i].ctl.q;
     assign intmode_o[i] = reg2hw.clicint[i].attr_mode.q;
     assign shv_o[i] = reg2hw.clicint[i].attr_shv.q;
