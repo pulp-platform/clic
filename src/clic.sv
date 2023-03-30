@@ -23,7 +23,7 @@ module clic import clic_reg_pkg::*; #(
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
   // do not edit below, these are derived
-  localparam int SRC_W    = $clog2(N_SOURCE)
+  localparam int SRC_W = $clog2(N_SOURCE)
 )(
   input logic        clk_i,
   input logic        rst_ni,
@@ -142,7 +142,7 @@ module clic import clic_reg_pkg::*; #(
     .le_o      (le),
 
     .ip_i      (ip)
-    );
+  );
 
   // Create level and prio signals with dynamic indexing (#bits are read from
   // registers and stored in logic signals)

@@ -68,12 +68,12 @@
     { skipto: "0x1000" }
     { multireg:
       { name: "CLICINT",
-	desc: "CLIC interrupt pending, enable, attribute and control",
-	count: "256",
-	cname: "CLIC",
-	swaccess: "rw",
-	hwaccess: "hro",
-	fields: [
+	      desc: "CLIC interrupt pending, enable, attribute and control",
+	      count: "256",
+	      cname: "CLIC",
+	      swaccess: "rw",
+	      hwaccess: "hro",
+	      fields: [
           { bits: "31:24", name: "CTL", desc: "interrupt control for interrupt" },
           { bits: "23:22", name: "ATTR_MODE", desc: "privilege mode of this interrupt" },
           //{ bits: "21:19", name: "reserved" },
@@ -83,7 +83,7 @@
           { bits: "7", name: "IE", desc: "interrupt enable for interrupt" },
 
           { bits: "0", name: "IP", desc: "interrupt pending for interrupt", hwaccess: "hrw" },
-	],
+	      ],
       }
     },
   ]
