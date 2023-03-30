@@ -19,30 +19,18 @@ package clic_reg_pkg;
 
   typedef struct packed {
     struct packed {
-      logic        q;
-    } nvbits;
-    struct packed {
       logic [3:0]  q;
-    } nlbits;
+    } mnlbits;
     struct packed {
       logic [1:0]  q;
     } nmbits;
-  } clic_reg2hw_cliccfg_reg_t;
-
-  typedef struct packed {
-    struct packed {
-      logic [12:0] q;
-    } num_interrupt;
-    struct packed {
-      logic [7:0]  q;
-    } version;
     struct packed {
       logic [3:0]  q;
-    } clicintctlbits;
+    } snlbits;
     struct packed {
-      logic [5:0]  q;
-    } num_trigger;
-  } clic_reg2hw_clicinfo_reg_t;
+      logic [3:0]  q;
+    } unlbits;
+  } clic_reg2hw_mcliccfg_reg_t;
 
   typedef struct packed {
     struct packed {
@@ -74,8 +62,7 @@ package clic_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    clic_reg2hw_cliccfg_reg_t cliccfg; // [3877:3871]
-    clic_reg2hw_clicinfo_reg_t clicinfo; // [3870:3840]
+    clic_reg2hw_mcliccfg_reg_t mcliccfg; // [3853:3840]
     clic_reg2hw_clicint_mreg_t [255:0] clicint; // [3839:0]
   } clic_reg2hw_t;
 
@@ -85,8 +72,7 @@ package clic_reg_pkg;
   } clic_hw2reg_t;
 
   // Register offsets
-  parameter logic [BlockAw-1:0] CLIC_CLICCFG_OFFSET = 13'h 0;
-  parameter logic [BlockAw-1:0] CLIC_CLICINFO_OFFSET = 13'h 4;
+  parameter logic [BlockAw-1:0] CLIC_MCLICCFG_OFFSET = 13'h 0;
   parameter logic [BlockAw-1:0] CLIC_CLICINT_0_OFFSET = 13'h 1000;
   parameter logic [BlockAw-1:0] CLIC_CLICINT_1_OFFSET = 13'h 1004;
   parameter logic [BlockAw-1:0] CLIC_CLICINT_2_OFFSET = 13'h 1008;
@@ -346,8 +332,7 @@ package clic_reg_pkg;
 
   // Register index
   typedef enum int {
-    CLIC_CLICCFG,
-    CLIC_CLICINFO,
+    CLIC_MCLICCFG,
     CLIC_CLICINT_0,
     CLIC_CLICINT_1,
     CLIC_CLICINT_2,
@@ -607,265 +592,264 @@ package clic_reg_pkg;
   } clic_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] CLIC_PERMIT [258] = '{
-    4'b 1111, // index[  0] CLIC_CLICCFG
-    4'b 1111, // index[  1] CLIC_CLICINFO
-    4'b 1111, // index[  2] CLIC_CLICINT_0
-    4'b 1111, // index[  3] CLIC_CLICINT_1
-    4'b 1111, // index[  4] CLIC_CLICINT_2
-    4'b 1111, // index[  5] CLIC_CLICINT_3
-    4'b 1111, // index[  6] CLIC_CLICINT_4
-    4'b 1111, // index[  7] CLIC_CLICINT_5
-    4'b 1111, // index[  8] CLIC_CLICINT_6
-    4'b 1111, // index[  9] CLIC_CLICINT_7
-    4'b 1111, // index[ 10] CLIC_CLICINT_8
-    4'b 1111, // index[ 11] CLIC_CLICINT_9
-    4'b 1111, // index[ 12] CLIC_CLICINT_10
-    4'b 1111, // index[ 13] CLIC_CLICINT_11
-    4'b 1111, // index[ 14] CLIC_CLICINT_12
-    4'b 1111, // index[ 15] CLIC_CLICINT_13
-    4'b 1111, // index[ 16] CLIC_CLICINT_14
-    4'b 1111, // index[ 17] CLIC_CLICINT_15
-    4'b 1111, // index[ 18] CLIC_CLICINT_16
-    4'b 1111, // index[ 19] CLIC_CLICINT_17
-    4'b 1111, // index[ 20] CLIC_CLICINT_18
-    4'b 1111, // index[ 21] CLIC_CLICINT_19
-    4'b 1111, // index[ 22] CLIC_CLICINT_20
-    4'b 1111, // index[ 23] CLIC_CLICINT_21
-    4'b 1111, // index[ 24] CLIC_CLICINT_22
-    4'b 1111, // index[ 25] CLIC_CLICINT_23
-    4'b 1111, // index[ 26] CLIC_CLICINT_24
-    4'b 1111, // index[ 27] CLIC_CLICINT_25
-    4'b 1111, // index[ 28] CLIC_CLICINT_26
-    4'b 1111, // index[ 29] CLIC_CLICINT_27
-    4'b 1111, // index[ 30] CLIC_CLICINT_28
-    4'b 1111, // index[ 31] CLIC_CLICINT_29
-    4'b 1111, // index[ 32] CLIC_CLICINT_30
-    4'b 1111, // index[ 33] CLIC_CLICINT_31
-    4'b 1111, // index[ 34] CLIC_CLICINT_32
-    4'b 1111, // index[ 35] CLIC_CLICINT_33
-    4'b 1111, // index[ 36] CLIC_CLICINT_34
-    4'b 1111, // index[ 37] CLIC_CLICINT_35
-    4'b 1111, // index[ 38] CLIC_CLICINT_36
-    4'b 1111, // index[ 39] CLIC_CLICINT_37
-    4'b 1111, // index[ 40] CLIC_CLICINT_38
-    4'b 1111, // index[ 41] CLIC_CLICINT_39
-    4'b 1111, // index[ 42] CLIC_CLICINT_40
-    4'b 1111, // index[ 43] CLIC_CLICINT_41
-    4'b 1111, // index[ 44] CLIC_CLICINT_42
-    4'b 1111, // index[ 45] CLIC_CLICINT_43
-    4'b 1111, // index[ 46] CLIC_CLICINT_44
-    4'b 1111, // index[ 47] CLIC_CLICINT_45
-    4'b 1111, // index[ 48] CLIC_CLICINT_46
-    4'b 1111, // index[ 49] CLIC_CLICINT_47
-    4'b 1111, // index[ 50] CLIC_CLICINT_48
-    4'b 1111, // index[ 51] CLIC_CLICINT_49
-    4'b 1111, // index[ 52] CLIC_CLICINT_50
-    4'b 1111, // index[ 53] CLIC_CLICINT_51
-    4'b 1111, // index[ 54] CLIC_CLICINT_52
-    4'b 1111, // index[ 55] CLIC_CLICINT_53
-    4'b 1111, // index[ 56] CLIC_CLICINT_54
-    4'b 1111, // index[ 57] CLIC_CLICINT_55
-    4'b 1111, // index[ 58] CLIC_CLICINT_56
-    4'b 1111, // index[ 59] CLIC_CLICINT_57
-    4'b 1111, // index[ 60] CLIC_CLICINT_58
-    4'b 1111, // index[ 61] CLIC_CLICINT_59
-    4'b 1111, // index[ 62] CLIC_CLICINT_60
-    4'b 1111, // index[ 63] CLIC_CLICINT_61
-    4'b 1111, // index[ 64] CLIC_CLICINT_62
-    4'b 1111, // index[ 65] CLIC_CLICINT_63
-    4'b 1111, // index[ 66] CLIC_CLICINT_64
-    4'b 1111, // index[ 67] CLIC_CLICINT_65
-    4'b 1111, // index[ 68] CLIC_CLICINT_66
-    4'b 1111, // index[ 69] CLIC_CLICINT_67
-    4'b 1111, // index[ 70] CLIC_CLICINT_68
-    4'b 1111, // index[ 71] CLIC_CLICINT_69
-    4'b 1111, // index[ 72] CLIC_CLICINT_70
-    4'b 1111, // index[ 73] CLIC_CLICINT_71
-    4'b 1111, // index[ 74] CLIC_CLICINT_72
-    4'b 1111, // index[ 75] CLIC_CLICINT_73
-    4'b 1111, // index[ 76] CLIC_CLICINT_74
-    4'b 1111, // index[ 77] CLIC_CLICINT_75
-    4'b 1111, // index[ 78] CLIC_CLICINT_76
-    4'b 1111, // index[ 79] CLIC_CLICINT_77
-    4'b 1111, // index[ 80] CLIC_CLICINT_78
-    4'b 1111, // index[ 81] CLIC_CLICINT_79
-    4'b 1111, // index[ 82] CLIC_CLICINT_80
-    4'b 1111, // index[ 83] CLIC_CLICINT_81
-    4'b 1111, // index[ 84] CLIC_CLICINT_82
-    4'b 1111, // index[ 85] CLIC_CLICINT_83
-    4'b 1111, // index[ 86] CLIC_CLICINT_84
-    4'b 1111, // index[ 87] CLIC_CLICINT_85
-    4'b 1111, // index[ 88] CLIC_CLICINT_86
-    4'b 1111, // index[ 89] CLIC_CLICINT_87
-    4'b 1111, // index[ 90] CLIC_CLICINT_88
-    4'b 1111, // index[ 91] CLIC_CLICINT_89
-    4'b 1111, // index[ 92] CLIC_CLICINT_90
-    4'b 1111, // index[ 93] CLIC_CLICINT_91
-    4'b 1111, // index[ 94] CLIC_CLICINT_92
-    4'b 1111, // index[ 95] CLIC_CLICINT_93
-    4'b 1111, // index[ 96] CLIC_CLICINT_94
-    4'b 1111, // index[ 97] CLIC_CLICINT_95
-    4'b 1111, // index[ 98] CLIC_CLICINT_96
-    4'b 1111, // index[ 99] CLIC_CLICINT_97
-    4'b 1111, // index[100] CLIC_CLICINT_98
-    4'b 1111, // index[101] CLIC_CLICINT_99
-    4'b 1111, // index[102] CLIC_CLICINT_100
-    4'b 1111, // index[103] CLIC_CLICINT_101
-    4'b 1111, // index[104] CLIC_CLICINT_102
-    4'b 1111, // index[105] CLIC_CLICINT_103
-    4'b 1111, // index[106] CLIC_CLICINT_104
-    4'b 1111, // index[107] CLIC_CLICINT_105
-    4'b 1111, // index[108] CLIC_CLICINT_106
-    4'b 1111, // index[109] CLIC_CLICINT_107
-    4'b 1111, // index[110] CLIC_CLICINT_108
-    4'b 1111, // index[111] CLIC_CLICINT_109
-    4'b 1111, // index[112] CLIC_CLICINT_110
-    4'b 1111, // index[113] CLIC_CLICINT_111
-    4'b 1111, // index[114] CLIC_CLICINT_112
-    4'b 1111, // index[115] CLIC_CLICINT_113
-    4'b 1111, // index[116] CLIC_CLICINT_114
-    4'b 1111, // index[117] CLIC_CLICINT_115
-    4'b 1111, // index[118] CLIC_CLICINT_116
-    4'b 1111, // index[119] CLIC_CLICINT_117
-    4'b 1111, // index[120] CLIC_CLICINT_118
-    4'b 1111, // index[121] CLIC_CLICINT_119
-    4'b 1111, // index[122] CLIC_CLICINT_120
-    4'b 1111, // index[123] CLIC_CLICINT_121
-    4'b 1111, // index[124] CLIC_CLICINT_122
-    4'b 1111, // index[125] CLIC_CLICINT_123
-    4'b 1111, // index[126] CLIC_CLICINT_124
-    4'b 1111, // index[127] CLIC_CLICINT_125
-    4'b 1111, // index[128] CLIC_CLICINT_126
-    4'b 1111, // index[129] CLIC_CLICINT_127
-    4'b 1111, // index[130] CLIC_CLICINT_128
-    4'b 1111, // index[131] CLIC_CLICINT_129
-    4'b 1111, // index[132] CLIC_CLICINT_130
-    4'b 1111, // index[133] CLIC_CLICINT_131
-    4'b 1111, // index[134] CLIC_CLICINT_132
-    4'b 1111, // index[135] CLIC_CLICINT_133
-    4'b 1111, // index[136] CLIC_CLICINT_134
-    4'b 1111, // index[137] CLIC_CLICINT_135
-    4'b 1111, // index[138] CLIC_CLICINT_136
-    4'b 1111, // index[139] CLIC_CLICINT_137
-    4'b 1111, // index[140] CLIC_CLICINT_138
-    4'b 1111, // index[141] CLIC_CLICINT_139
-    4'b 1111, // index[142] CLIC_CLICINT_140
-    4'b 1111, // index[143] CLIC_CLICINT_141
-    4'b 1111, // index[144] CLIC_CLICINT_142
-    4'b 1111, // index[145] CLIC_CLICINT_143
-    4'b 1111, // index[146] CLIC_CLICINT_144
-    4'b 1111, // index[147] CLIC_CLICINT_145
-    4'b 1111, // index[148] CLIC_CLICINT_146
-    4'b 1111, // index[149] CLIC_CLICINT_147
-    4'b 1111, // index[150] CLIC_CLICINT_148
-    4'b 1111, // index[151] CLIC_CLICINT_149
-    4'b 1111, // index[152] CLIC_CLICINT_150
-    4'b 1111, // index[153] CLIC_CLICINT_151
-    4'b 1111, // index[154] CLIC_CLICINT_152
-    4'b 1111, // index[155] CLIC_CLICINT_153
-    4'b 1111, // index[156] CLIC_CLICINT_154
-    4'b 1111, // index[157] CLIC_CLICINT_155
-    4'b 1111, // index[158] CLIC_CLICINT_156
-    4'b 1111, // index[159] CLIC_CLICINT_157
-    4'b 1111, // index[160] CLIC_CLICINT_158
-    4'b 1111, // index[161] CLIC_CLICINT_159
-    4'b 1111, // index[162] CLIC_CLICINT_160
-    4'b 1111, // index[163] CLIC_CLICINT_161
-    4'b 1111, // index[164] CLIC_CLICINT_162
-    4'b 1111, // index[165] CLIC_CLICINT_163
-    4'b 1111, // index[166] CLIC_CLICINT_164
-    4'b 1111, // index[167] CLIC_CLICINT_165
-    4'b 1111, // index[168] CLIC_CLICINT_166
-    4'b 1111, // index[169] CLIC_CLICINT_167
-    4'b 1111, // index[170] CLIC_CLICINT_168
-    4'b 1111, // index[171] CLIC_CLICINT_169
-    4'b 1111, // index[172] CLIC_CLICINT_170
-    4'b 1111, // index[173] CLIC_CLICINT_171
-    4'b 1111, // index[174] CLIC_CLICINT_172
-    4'b 1111, // index[175] CLIC_CLICINT_173
-    4'b 1111, // index[176] CLIC_CLICINT_174
-    4'b 1111, // index[177] CLIC_CLICINT_175
-    4'b 1111, // index[178] CLIC_CLICINT_176
-    4'b 1111, // index[179] CLIC_CLICINT_177
-    4'b 1111, // index[180] CLIC_CLICINT_178
-    4'b 1111, // index[181] CLIC_CLICINT_179
-    4'b 1111, // index[182] CLIC_CLICINT_180
-    4'b 1111, // index[183] CLIC_CLICINT_181
-    4'b 1111, // index[184] CLIC_CLICINT_182
-    4'b 1111, // index[185] CLIC_CLICINT_183
-    4'b 1111, // index[186] CLIC_CLICINT_184
-    4'b 1111, // index[187] CLIC_CLICINT_185
-    4'b 1111, // index[188] CLIC_CLICINT_186
-    4'b 1111, // index[189] CLIC_CLICINT_187
-    4'b 1111, // index[190] CLIC_CLICINT_188
-    4'b 1111, // index[191] CLIC_CLICINT_189
-    4'b 1111, // index[192] CLIC_CLICINT_190
-    4'b 1111, // index[193] CLIC_CLICINT_191
-    4'b 1111, // index[194] CLIC_CLICINT_192
-    4'b 1111, // index[195] CLIC_CLICINT_193
-    4'b 1111, // index[196] CLIC_CLICINT_194
-    4'b 1111, // index[197] CLIC_CLICINT_195
-    4'b 1111, // index[198] CLIC_CLICINT_196
-    4'b 1111, // index[199] CLIC_CLICINT_197
-    4'b 1111, // index[200] CLIC_CLICINT_198
-    4'b 1111, // index[201] CLIC_CLICINT_199
-    4'b 1111, // index[202] CLIC_CLICINT_200
-    4'b 1111, // index[203] CLIC_CLICINT_201
-    4'b 1111, // index[204] CLIC_CLICINT_202
-    4'b 1111, // index[205] CLIC_CLICINT_203
-    4'b 1111, // index[206] CLIC_CLICINT_204
-    4'b 1111, // index[207] CLIC_CLICINT_205
-    4'b 1111, // index[208] CLIC_CLICINT_206
-    4'b 1111, // index[209] CLIC_CLICINT_207
-    4'b 1111, // index[210] CLIC_CLICINT_208
-    4'b 1111, // index[211] CLIC_CLICINT_209
-    4'b 1111, // index[212] CLIC_CLICINT_210
-    4'b 1111, // index[213] CLIC_CLICINT_211
-    4'b 1111, // index[214] CLIC_CLICINT_212
-    4'b 1111, // index[215] CLIC_CLICINT_213
-    4'b 1111, // index[216] CLIC_CLICINT_214
-    4'b 1111, // index[217] CLIC_CLICINT_215
-    4'b 1111, // index[218] CLIC_CLICINT_216
-    4'b 1111, // index[219] CLIC_CLICINT_217
-    4'b 1111, // index[220] CLIC_CLICINT_218
-    4'b 1111, // index[221] CLIC_CLICINT_219
-    4'b 1111, // index[222] CLIC_CLICINT_220
-    4'b 1111, // index[223] CLIC_CLICINT_221
-    4'b 1111, // index[224] CLIC_CLICINT_222
-    4'b 1111, // index[225] CLIC_CLICINT_223
-    4'b 1111, // index[226] CLIC_CLICINT_224
-    4'b 1111, // index[227] CLIC_CLICINT_225
-    4'b 1111, // index[228] CLIC_CLICINT_226
-    4'b 1111, // index[229] CLIC_CLICINT_227
-    4'b 1111, // index[230] CLIC_CLICINT_228
-    4'b 1111, // index[231] CLIC_CLICINT_229
-    4'b 1111, // index[232] CLIC_CLICINT_230
-    4'b 1111, // index[233] CLIC_CLICINT_231
-    4'b 1111, // index[234] CLIC_CLICINT_232
-    4'b 1111, // index[235] CLIC_CLICINT_233
-    4'b 1111, // index[236] CLIC_CLICINT_234
-    4'b 1111, // index[237] CLIC_CLICINT_235
-    4'b 1111, // index[238] CLIC_CLICINT_236
-    4'b 1111, // index[239] CLIC_CLICINT_237
-    4'b 1111, // index[240] CLIC_CLICINT_238
-    4'b 1111, // index[241] CLIC_CLICINT_239
-    4'b 1111, // index[242] CLIC_CLICINT_240
-    4'b 1111, // index[243] CLIC_CLICINT_241
-    4'b 1111, // index[244] CLIC_CLICINT_242
-    4'b 1111, // index[245] CLIC_CLICINT_243
-    4'b 1111, // index[246] CLIC_CLICINT_244
-    4'b 1111, // index[247] CLIC_CLICINT_245
-    4'b 1111, // index[248] CLIC_CLICINT_246
-    4'b 1111, // index[249] CLIC_CLICINT_247
-    4'b 1111, // index[250] CLIC_CLICINT_248
-    4'b 1111, // index[251] CLIC_CLICINT_249
-    4'b 1111, // index[252] CLIC_CLICINT_250
-    4'b 1111, // index[253] CLIC_CLICINT_251
-    4'b 1111, // index[254] CLIC_CLICINT_252
-    4'b 1111, // index[255] CLIC_CLICINT_253
-    4'b 1111, // index[256] CLIC_CLICINT_254
-    4'b 1111  // index[257] CLIC_CLICINT_255
+  parameter logic [3:0] CLIC_PERMIT [257] = '{
+    4'b 1111, // index[  0] CLIC_MCLICCFG
+    4'b 1111, // index[  1] CLIC_CLICINT_0
+    4'b 1111, // index[  2] CLIC_CLICINT_1
+    4'b 1111, // index[  3] CLIC_CLICINT_2
+    4'b 1111, // index[  4] CLIC_CLICINT_3
+    4'b 1111, // index[  5] CLIC_CLICINT_4
+    4'b 1111, // index[  6] CLIC_CLICINT_5
+    4'b 1111, // index[  7] CLIC_CLICINT_6
+    4'b 1111, // index[  8] CLIC_CLICINT_7
+    4'b 1111, // index[  9] CLIC_CLICINT_8
+    4'b 1111, // index[ 10] CLIC_CLICINT_9
+    4'b 1111, // index[ 11] CLIC_CLICINT_10
+    4'b 1111, // index[ 12] CLIC_CLICINT_11
+    4'b 1111, // index[ 13] CLIC_CLICINT_12
+    4'b 1111, // index[ 14] CLIC_CLICINT_13
+    4'b 1111, // index[ 15] CLIC_CLICINT_14
+    4'b 1111, // index[ 16] CLIC_CLICINT_15
+    4'b 1111, // index[ 17] CLIC_CLICINT_16
+    4'b 1111, // index[ 18] CLIC_CLICINT_17
+    4'b 1111, // index[ 19] CLIC_CLICINT_18
+    4'b 1111, // index[ 20] CLIC_CLICINT_19
+    4'b 1111, // index[ 21] CLIC_CLICINT_20
+    4'b 1111, // index[ 22] CLIC_CLICINT_21
+    4'b 1111, // index[ 23] CLIC_CLICINT_22
+    4'b 1111, // index[ 24] CLIC_CLICINT_23
+    4'b 1111, // index[ 25] CLIC_CLICINT_24
+    4'b 1111, // index[ 26] CLIC_CLICINT_25
+    4'b 1111, // index[ 27] CLIC_CLICINT_26
+    4'b 1111, // index[ 28] CLIC_CLICINT_27
+    4'b 1111, // index[ 29] CLIC_CLICINT_28
+    4'b 1111, // index[ 30] CLIC_CLICINT_29
+    4'b 1111, // index[ 31] CLIC_CLICINT_30
+    4'b 1111, // index[ 32] CLIC_CLICINT_31
+    4'b 1111, // index[ 33] CLIC_CLICINT_32
+    4'b 1111, // index[ 34] CLIC_CLICINT_33
+    4'b 1111, // index[ 35] CLIC_CLICINT_34
+    4'b 1111, // index[ 36] CLIC_CLICINT_35
+    4'b 1111, // index[ 37] CLIC_CLICINT_36
+    4'b 1111, // index[ 38] CLIC_CLICINT_37
+    4'b 1111, // index[ 39] CLIC_CLICINT_38
+    4'b 1111, // index[ 40] CLIC_CLICINT_39
+    4'b 1111, // index[ 41] CLIC_CLICINT_40
+    4'b 1111, // index[ 42] CLIC_CLICINT_41
+    4'b 1111, // index[ 43] CLIC_CLICINT_42
+    4'b 1111, // index[ 44] CLIC_CLICINT_43
+    4'b 1111, // index[ 45] CLIC_CLICINT_44
+    4'b 1111, // index[ 46] CLIC_CLICINT_45
+    4'b 1111, // index[ 47] CLIC_CLICINT_46
+    4'b 1111, // index[ 48] CLIC_CLICINT_47
+    4'b 1111, // index[ 49] CLIC_CLICINT_48
+    4'b 1111, // index[ 50] CLIC_CLICINT_49
+    4'b 1111, // index[ 51] CLIC_CLICINT_50
+    4'b 1111, // index[ 52] CLIC_CLICINT_51
+    4'b 1111, // index[ 53] CLIC_CLICINT_52
+    4'b 1111, // index[ 54] CLIC_CLICINT_53
+    4'b 1111, // index[ 55] CLIC_CLICINT_54
+    4'b 1111, // index[ 56] CLIC_CLICINT_55
+    4'b 1111, // index[ 57] CLIC_CLICINT_56
+    4'b 1111, // index[ 58] CLIC_CLICINT_57
+    4'b 1111, // index[ 59] CLIC_CLICINT_58
+    4'b 1111, // index[ 60] CLIC_CLICINT_59
+    4'b 1111, // index[ 61] CLIC_CLICINT_60
+    4'b 1111, // index[ 62] CLIC_CLICINT_61
+    4'b 1111, // index[ 63] CLIC_CLICINT_62
+    4'b 1111, // index[ 64] CLIC_CLICINT_63
+    4'b 1111, // index[ 65] CLIC_CLICINT_64
+    4'b 1111, // index[ 66] CLIC_CLICINT_65
+    4'b 1111, // index[ 67] CLIC_CLICINT_66
+    4'b 1111, // index[ 68] CLIC_CLICINT_67
+    4'b 1111, // index[ 69] CLIC_CLICINT_68
+    4'b 1111, // index[ 70] CLIC_CLICINT_69
+    4'b 1111, // index[ 71] CLIC_CLICINT_70
+    4'b 1111, // index[ 72] CLIC_CLICINT_71
+    4'b 1111, // index[ 73] CLIC_CLICINT_72
+    4'b 1111, // index[ 74] CLIC_CLICINT_73
+    4'b 1111, // index[ 75] CLIC_CLICINT_74
+    4'b 1111, // index[ 76] CLIC_CLICINT_75
+    4'b 1111, // index[ 77] CLIC_CLICINT_76
+    4'b 1111, // index[ 78] CLIC_CLICINT_77
+    4'b 1111, // index[ 79] CLIC_CLICINT_78
+    4'b 1111, // index[ 80] CLIC_CLICINT_79
+    4'b 1111, // index[ 81] CLIC_CLICINT_80
+    4'b 1111, // index[ 82] CLIC_CLICINT_81
+    4'b 1111, // index[ 83] CLIC_CLICINT_82
+    4'b 1111, // index[ 84] CLIC_CLICINT_83
+    4'b 1111, // index[ 85] CLIC_CLICINT_84
+    4'b 1111, // index[ 86] CLIC_CLICINT_85
+    4'b 1111, // index[ 87] CLIC_CLICINT_86
+    4'b 1111, // index[ 88] CLIC_CLICINT_87
+    4'b 1111, // index[ 89] CLIC_CLICINT_88
+    4'b 1111, // index[ 90] CLIC_CLICINT_89
+    4'b 1111, // index[ 91] CLIC_CLICINT_90
+    4'b 1111, // index[ 92] CLIC_CLICINT_91
+    4'b 1111, // index[ 93] CLIC_CLICINT_92
+    4'b 1111, // index[ 94] CLIC_CLICINT_93
+    4'b 1111, // index[ 95] CLIC_CLICINT_94
+    4'b 1111, // index[ 96] CLIC_CLICINT_95
+    4'b 1111, // index[ 97] CLIC_CLICINT_96
+    4'b 1111, // index[ 98] CLIC_CLICINT_97
+    4'b 1111, // index[ 99] CLIC_CLICINT_98
+    4'b 1111, // index[100] CLIC_CLICINT_99
+    4'b 1111, // index[101] CLIC_CLICINT_100
+    4'b 1111, // index[102] CLIC_CLICINT_101
+    4'b 1111, // index[103] CLIC_CLICINT_102
+    4'b 1111, // index[104] CLIC_CLICINT_103
+    4'b 1111, // index[105] CLIC_CLICINT_104
+    4'b 1111, // index[106] CLIC_CLICINT_105
+    4'b 1111, // index[107] CLIC_CLICINT_106
+    4'b 1111, // index[108] CLIC_CLICINT_107
+    4'b 1111, // index[109] CLIC_CLICINT_108
+    4'b 1111, // index[110] CLIC_CLICINT_109
+    4'b 1111, // index[111] CLIC_CLICINT_110
+    4'b 1111, // index[112] CLIC_CLICINT_111
+    4'b 1111, // index[113] CLIC_CLICINT_112
+    4'b 1111, // index[114] CLIC_CLICINT_113
+    4'b 1111, // index[115] CLIC_CLICINT_114
+    4'b 1111, // index[116] CLIC_CLICINT_115
+    4'b 1111, // index[117] CLIC_CLICINT_116
+    4'b 1111, // index[118] CLIC_CLICINT_117
+    4'b 1111, // index[119] CLIC_CLICINT_118
+    4'b 1111, // index[120] CLIC_CLICINT_119
+    4'b 1111, // index[121] CLIC_CLICINT_120
+    4'b 1111, // index[122] CLIC_CLICINT_121
+    4'b 1111, // index[123] CLIC_CLICINT_122
+    4'b 1111, // index[124] CLIC_CLICINT_123
+    4'b 1111, // index[125] CLIC_CLICINT_124
+    4'b 1111, // index[126] CLIC_CLICINT_125
+    4'b 1111, // index[127] CLIC_CLICINT_126
+    4'b 1111, // index[128] CLIC_CLICINT_127
+    4'b 1111, // index[129] CLIC_CLICINT_128
+    4'b 1111, // index[130] CLIC_CLICINT_129
+    4'b 1111, // index[131] CLIC_CLICINT_130
+    4'b 1111, // index[132] CLIC_CLICINT_131
+    4'b 1111, // index[133] CLIC_CLICINT_132
+    4'b 1111, // index[134] CLIC_CLICINT_133
+    4'b 1111, // index[135] CLIC_CLICINT_134
+    4'b 1111, // index[136] CLIC_CLICINT_135
+    4'b 1111, // index[137] CLIC_CLICINT_136
+    4'b 1111, // index[138] CLIC_CLICINT_137
+    4'b 1111, // index[139] CLIC_CLICINT_138
+    4'b 1111, // index[140] CLIC_CLICINT_139
+    4'b 1111, // index[141] CLIC_CLICINT_140
+    4'b 1111, // index[142] CLIC_CLICINT_141
+    4'b 1111, // index[143] CLIC_CLICINT_142
+    4'b 1111, // index[144] CLIC_CLICINT_143
+    4'b 1111, // index[145] CLIC_CLICINT_144
+    4'b 1111, // index[146] CLIC_CLICINT_145
+    4'b 1111, // index[147] CLIC_CLICINT_146
+    4'b 1111, // index[148] CLIC_CLICINT_147
+    4'b 1111, // index[149] CLIC_CLICINT_148
+    4'b 1111, // index[150] CLIC_CLICINT_149
+    4'b 1111, // index[151] CLIC_CLICINT_150
+    4'b 1111, // index[152] CLIC_CLICINT_151
+    4'b 1111, // index[153] CLIC_CLICINT_152
+    4'b 1111, // index[154] CLIC_CLICINT_153
+    4'b 1111, // index[155] CLIC_CLICINT_154
+    4'b 1111, // index[156] CLIC_CLICINT_155
+    4'b 1111, // index[157] CLIC_CLICINT_156
+    4'b 1111, // index[158] CLIC_CLICINT_157
+    4'b 1111, // index[159] CLIC_CLICINT_158
+    4'b 1111, // index[160] CLIC_CLICINT_159
+    4'b 1111, // index[161] CLIC_CLICINT_160
+    4'b 1111, // index[162] CLIC_CLICINT_161
+    4'b 1111, // index[163] CLIC_CLICINT_162
+    4'b 1111, // index[164] CLIC_CLICINT_163
+    4'b 1111, // index[165] CLIC_CLICINT_164
+    4'b 1111, // index[166] CLIC_CLICINT_165
+    4'b 1111, // index[167] CLIC_CLICINT_166
+    4'b 1111, // index[168] CLIC_CLICINT_167
+    4'b 1111, // index[169] CLIC_CLICINT_168
+    4'b 1111, // index[170] CLIC_CLICINT_169
+    4'b 1111, // index[171] CLIC_CLICINT_170
+    4'b 1111, // index[172] CLIC_CLICINT_171
+    4'b 1111, // index[173] CLIC_CLICINT_172
+    4'b 1111, // index[174] CLIC_CLICINT_173
+    4'b 1111, // index[175] CLIC_CLICINT_174
+    4'b 1111, // index[176] CLIC_CLICINT_175
+    4'b 1111, // index[177] CLIC_CLICINT_176
+    4'b 1111, // index[178] CLIC_CLICINT_177
+    4'b 1111, // index[179] CLIC_CLICINT_178
+    4'b 1111, // index[180] CLIC_CLICINT_179
+    4'b 1111, // index[181] CLIC_CLICINT_180
+    4'b 1111, // index[182] CLIC_CLICINT_181
+    4'b 1111, // index[183] CLIC_CLICINT_182
+    4'b 1111, // index[184] CLIC_CLICINT_183
+    4'b 1111, // index[185] CLIC_CLICINT_184
+    4'b 1111, // index[186] CLIC_CLICINT_185
+    4'b 1111, // index[187] CLIC_CLICINT_186
+    4'b 1111, // index[188] CLIC_CLICINT_187
+    4'b 1111, // index[189] CLIC_CLICINT_188
+    4'b 1111, // index[190] CLIC_CLICINT_189
+    4'b 1111, // index[191] CLIC_CLICINT_190
+    4'b 1111, // index[192] CLIC_CLICINT_191
+    4'b 1111, // index[193] CLIC_CLICINT_192
+    4'b 1111, // index[194] CLIC_CLICINT_193
+    4'b 1111, // index[195] CLIC_CLICINT_194
+    4'b 1111, // index[196] CLIC_CLICINT_195
+    4'b 1111, // index[197] CLIC_CLICINT_196
+    4'b 1111, // index[198] CLIC_CLICINT_197
+    4'b 1111, // index[199] CLIC_CLICINT_198
+    4'b 1111, // index[200] CLIC_CLICINT_199
+    4'b 1111, // index[201] CLIC_CLICINT_200
+    4'b 1111, // index[202] CLIC_CLICINT_201
+    4'b 1111, // index[203] CLIC_CLICINT_202
+    4'b 1111, // index[204] CLIC_CLICINT_203
+    4'b 1111, // index[205] CLIC_CLICINT_204
+    4'b 1111, // index[206] CLIC_CLICINT_205
+    4'b 1111, // index[207] CLIC_CLICINT_206
+    4'b 1111, // index[208] CLIC_CLICINT_207
+    4'b 1111, // index[209] CLIC_CLICINT_208
+    4'b 1111, // index[210] CLIC_CLICINT_209
+    4'b 1111, // index[211] CLIC_CLICINT_210
+    4'b 1111, // index[212] CLIC_CLICINT_211
+    4'b 1111, // index[213] CLIC_CLICINT_212
+    4'b 1111, // index[214] CLIC_CLICINT_213
+    4'b 1111, // index[215] CLIC_CLICINT_214
+    4'b 1111, // index[216] CLIC_CLICINT_215
+    4'b 1111, // index[217] CLIC_CLICINT_216
+    4'b 1111, // index[218] CLIC_CLICINT_217
+    4'b 1111, // index[219] CLIC_CLICINT_218
+    4'b 1111, // index[220] CLIC_CLICINT_219
+    4'b 1111, // index[221] CLIC_CLICINT_220
+    4'b 1111, // index[222] CLIC_CLICINT_221
+    4'b 1111, // index[223] CLIC_CLICINT_222
+    4'b 1111, // index[224] CLIC_CLICINT_223
+    4'b 1111, // index[225] CLIC_CLICINT_224
+    4'b 1111, // index[226] CLIC_CLICINT_225
+    4'b 1111, // index[227] CLIC_CLICINT_226
+    4'b 1111, // index[228] CLIC_CLICINT_227
+    4'b 1111, // index[229] CLIC_CLICINT_228
+    4'b 1111, // index[230] CLIC_CLICINT_229
+    4'b 1111, // index[231] CLIC_CLICINT_230
+    4'b 1111, // index[232] CLIC_CLICINT_231
+    4'b 1111, // index[233] CLIC_CLICINT_232
+    4'b 1111, // index[234] CLIC_CLICINT_233
+    4'b 1111, // index[235] CLIC_CLICINT_234
+    4'b 1111, // index[236] CLIC_CLICINT_235
+    4'b 1111, // index[237] CLIC_CLICINT_236
+    4'b 1111, // index[238] CLIC_CLICINT_237
+    4'b 1111, // index[239] CLIC_CLICINT_238
+    4'b 1111, // index[240] CLIC_CLICINT_239
+    4'b 1111, // index[241] CLIC_CLICINT_240
+    4'b 1111, // index[242] CLIC_CLICINT_241
+    4'b 1111, // index[243] CLIC_CLICINT_242
+    4'b 1111, // index[244] CLIC_CLICINT_243
+    4'b 1111, // index[245] CLIC_CLICINT_244
+    4'b 1111, // index[246] CLIC_CLICINT_245
+    4'b 1111, // index[247] CLIC_CLICINT_246
+    4'b 1111, // index[248] CLIC_CLICINT_247
+    4'b 1111, // index[249] CLIC_CLICINT_248
+    4'b 1111, // index[250] CLIC_CLICINT_249
+    4'b 1111, // index[251] CLIC_CLICINT_250
+    4'b 1111, // index[252] CLIC_CLICINT_251
+    4'b 1111, // index[253] CLIC_CLICINT_252
+    4'b 1111, // index[254] CLIC_CLICINT_253
+    4'b 1111, // index[255] CLIC_CLICINT_254
+    4'b 1111  // index[256] CLIC_CLICINT_255
   };
 
 endpackage

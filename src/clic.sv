@@ -146,13 +146,13 @@ module clic import clic_reg_pkg::*; #(
 
   // Create level and prio signals with dynamic indexing (#bits are read from
   // registers and stored in logic signals)
-  logic [3:0] nlbits;
+  logic [3:0] mnlbits;
 
   always_comb begin
     // Saturate nlbits if nlbits > clicintctlbits (nlbits > 0 && nlbits <= 8)
-    nlbits = INTCTLBITS;
-    if (nlbits <= INTCTLBITS)
-      nlbits = reg2hw.cliccfg.nlbits.q;
+    mnlbits = INTCTLBITS;
+    if (mnlbits <= INTCTLBITS)
+      mnlbits = reg2hw.mcliccfg.mnlbits.q;
   end
 
   // Extract SHV bit for the highest level, highest priority pending interrupt
@@ -164,7 +164,7 @@ module clic import clic_reg_pkg::*; #(
       // Get level value of the highest level, highest priority interrupt from
       // clic_target (still in the form `L-P-1`)
       irq_level_tmp = 8'hff;
-      unique case (nlbits)
+      unique case (mnlbits)
         4'h0: begin
           irq_level_tmp = 8'hff;
         end
@@ -199,7 +199,7 @@ module clic import clic_reg_pkg::*; #(
 
   // Create mode signal (#bits are read from egisters and stored in logic signals)
   logic [1:0] nmbits;
-  assign nmbits = reg2hw.cliccfg.nmbits.q;
+  assign nmbits = reg2hw.mcliccfg.nmbits.q;
 
   logic [1:0] irq_mode_tmp;
 
