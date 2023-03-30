@@ -10,7 +10,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-<% import math %>\
 # CLIC register template
 # - src: Number of interrupt sources
 {
@@ -61,7 +60,7 @@
         { bits: "24:21", name: "CLICINTCTLBITS",
     desc: "number of bits implemented in clicintctl" },
         { bits: "20:13", name: "version",
-    desc: "archchitecture version [20:17] and implementation version [16:13]" },
+    desc: "architecture version [20:17] and implementation version [16:13]" },
         { bits: "12:0", name: "num_interrupt",
     desc: "number of maximum interrupt inputs supported" },
       ],
