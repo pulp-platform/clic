@@ -31,5 +31,6 @@ sources:
   - src/clic_reg_adapter.sv
   - src/clic_gateway.sv
   - src/clic_target.sv
+  - src/clic_apb.sv
   - src/clic.sv
 
