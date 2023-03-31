@@ -38,7 +38,7 @@ clic_reg_pkg.sv clic_reg_top.sv: clic.hjson
 	$(REGTOOL) -r clic.hjson -t .
 
 clic.hjson: clic.hjson.tpl
-	./clic.py < $< > $@
+	./clic.py -s $(NUM_INTERRUPT) -c $(CLICINTCTLBITS) < $< > $@
 
 headers: clic.h
 
