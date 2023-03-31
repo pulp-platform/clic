@@ -17,7 +17,7 @@
 
 `include "common_cells/assertions.svh"
 
-module clic import clic_reg_pkg::*; #(
+module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
   parameter int  N_SOURCE = 256,
@@ -46,8 +46,10 @@ module clic import clic_reg_pkg::*; #(
   input  logic             irq_kill_ack_i
 );
 
-  clic_reg2hw_t reg2hw;
-  clic_hw2reg_t hw2reg;
+  mclic_reg2hw_t mclic_reg2hw;
+
+  clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw;
+  clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg;
 
   logic [7:0] intctl [N_SOURCE];
   logic [7:0] irq_max;
@@ -107,23 +109,85 @@ module clic import clic_reg_pkg::*; #(
     .irq_kill_ack_i
   );
 
-  // registers
-  clic_reg_top #(
+  // machine mode registers
+  // 0x0000
+  reg_req_t reg_mclic_req;
+  reg_rsp_t reg_mclic_rsp;
+
+  mclic_reg_top #(
     .reg_req_t (reg_req_t),
     .reg_rsp_t (reg_rsp_t)
-  ) i_clic_reg_top (
+  ) i_mclic_reg_top (
     .clk_i,
     .rst_ni,
 
-    .reg_req_i,
-    .reg_rsp_o,
+    .reg_req_i (reg_mclic_req),
+    .reg_rsp_o (reg_mclic_rsp),
 
-    .reg2hw,
-    .hw2reg,
+    .reg2hw (mclic_reg2hw),
 
     .devmode_i  (1'b1)
   );
 
+  // interrupt control and status registers (per interrupt line)
+  // 0x1000 - 0x4fff
+  reg_req_t reg_all_int_req;
+  reg_rsp_t reg_all_int_rsp;
+  logic [15:0] int_addr;
+
+  reg_req_t [N_SOURCE-1:0] reg_int_req;
+  reg_rsp_t [N_SOURCE-1:0] reg_int_rsp;
+
+  // TODO: improve decoding by only deasserting valid
+  always_comb begin
+    int_addr = reg_all_int_req.addr[15:2];
+
+    reg_int_req = '0;
+    reg_all_int_rsp = '0;
+
+    reg_int_req[int_addr] = reg_all_int_req;
+    reg_all_int_rsp = reg_int_rsp[int_addr];
+  end
+
+  for (genvar i = 0; i < N_SOURCE; i++) begin : gen_clic_int
+    clicint_reg_top #(
+      .reg_req_t (reg_req_t),
+      .reg_rsp_t (reg_rsp_t)
+    ) i_clicint_reg_top (
+      .clk_i,
+      .rst_ni,
+
+      .reg_req_i (reg_int_req[i]),
+      .reg_rsp_o (reg_int_rsp[i]),
+
+      .reg2hw (clicint_reg2hw[i]),
+      .hw2reg (clicint_hw2reg[i]),
+
+      .devmode_i  (1'b1)
+    );
+  end
+
+  // top level address decoding and bus muxing
+  always_comb begin : clic_addr_decode
+    reg_mclic_req = '0;
+    reg_all_int_req = '0;
+    reg_rsp_o = '0;
+
+    unique case(reg_req_i.addr[15:0]) inside
+      16'h0000: begin
+        reg_mclic_req = reg_req_i;
+        reg_rsp_o = reg_mclic_rsp;
+      end
+      [16'h1000:16'h4fff]: begin
+        reg_all_int_req = reg_req_i;
+        reg_all_int_req.addr = reg_req_i.addr - 16'h1000;
+        reg_rsp_o = reg_all_int_rsp;
+      end
+      default: ;
+    endcase // unique case (reg_req_i.addr)
+  end
+
+  // adapter
   clic_reg_adapter #(
     .N_SOURCE   (N_SOURCE),
     .INTCTLBITS (INTCTLBITS)
@@ -131,8 +195,10 @@ module clic import clic_reg_pkg::*; #(
     .clk_i,
     .rst_ni,
 
-    .reg2hw,
-    .hw2reg,
+    .mclic_reg2hw,
+
+    .clicint_reg2hw,
+    .clicint_hw2reg,
 
     .intctl_o  (intctl),
     .intmode_o (intmode),
@@ -152,7 +218,7 @@ module clic import clic_reg_pkg::*; #(
     // Saturate nlbits if nlbits > clicintctlbits (nlbits > 0 && nlbits <= 8)
     mnlbits = INTCTLBITS;
     if (mnlbits <= INTCTLBITS)
-      mnlbits = reg2hw.mcliccfg.mnlbits.q;
+      mnlbits = mclic_reg2hw.mcliccfg.mnlbits.q;
   end
 
   // Extract SHV bit for the highest level, highest priority pending interrupt
@@ -199,7 +265,7 @@ module clic import clic_reg_pkg::*; #(
 
   // Create mode signal (#bits are read from egisters and stored in logic signals)
   logic [1:0] nmbits;
-  assign nmbits = reg2hw.mcliccfg.nmbits.q;
+  assign nmbits = mclic_reg2hw.mcliccfg.nmbits.q;
 
   logic [1:0] irq_mode_tmp;
 
