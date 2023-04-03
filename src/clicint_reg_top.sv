@@ -198,7 +198,7 @@ module clicint_reg_top #(
   prim_subreg #(
     .DW      (2),
     .SWACCESS("RW"),
-    .RESVAL  (2'h0)
+    .RESVAL  (2'h3)
   ) u_clicint_attr_mode (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
