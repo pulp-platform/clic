@@ -55,6 +55,14 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   localparam logic [1:0] S_MODE = 2'b01;
   localparam logic [1:0] M_MODE = 2'b11;
 
+  localparam logic [15:0] MCLICCFG_START = 16'h0000;
+  localparam logic [15:0] MCLICINT_START = 16'h1000;
+  localparam logic [15:0] MCLICINT_END   = 16'h4fff;
+
+  localparam logic [15:0] SCLICCFG_START = 16'h8000;
+  localparam logic [15:0] SCLICINT_START = 16'h9000;
+  localparam logic [15:0] SCLICINT_END   = 16'hcfff;
+
   mclic_reg2hw_t mclic_reg2hw;
 
   clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw;
@@ -190,24 +198,24 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     reg_rsp_o = '0;
 
     unique case(reg_req_i.addr[15:0]) inside
-      16'h0000: begin
+      MCLICCFG_START: begin
         reg_mclic_req = reg_req_i;
         reg_rsp_o = reg_mclic_rsp;
       end
-      [16'h1000:16'h4fff]: begin
+      [MCLICINT_START:MCLICINT_END]: begin
         reg_all_int_req = reg_req_i;
-        reg_all_int_req.addr = reg_req_i.addr - 16'h1000;
+        reg_all_int_req.addr = reg_req_i.addr - MCLICINT_START;
         reg_rsp_o = reg_all_int_rsp;
       end
-      16'h8000: begin
+      SCLICCFG_START: begin
         if (SSCLIC) begin
           reg_mclic_req = reg_req_i;
           reg_rsp_o = reg_mclic_rsp;
         end
       end
-      [16'h9000:16'hcfff]: begin
+      [SCLICINT_START:SCLICINT_END]: begin
         if (SSCLIC) begin
-          reg_all_int_req.addr = reg_req_i.addr - 16'h9000;
+          reg_all_int_req.addr = reg_req_i.addr - SCLICINT_START;
           if (intmode[reg_all_int_req.addr[15:2]] <= S_MODE) begin
             // check whether the irq we want to access is s-mode or lower
             reg_all_int_req = reg_req_i;
@@ -309,10 +317,10 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   always_comb begin
       // Get mode of the highest level, highest priority interrupt from
       // clic_target (still in the form `L-P-1`)
-      irq_mode_tmp = 2'b11;
+      irq_mode_tmp = M_MODE;
       unique case (nmbits)
         4'h0: begin
-          irq_mode_tmp = 2'b11;
+          irq_mode_tmp = M_MODE;
         end
         4'h1: begin
           irq_mode_tmp[1] = irq_mode[1];
@@ -324,7 +332,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
           irq_mode_tmp = irq_mode;
         end
         default:
-          irq_mode_tmp = 2'b11;
+          irq_mode_tmp = M_MODE;
       endcase
   end
 
