@@ -317,9 +317,18 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
       endcase
   end
 
-  // Create mode signal (#bits are read from egisters and stored in logic signals)
   logic [1:0] nmbits;
-  assign nmbits = mclic_reg2hw.mcliccfg.nmbits.q;
+
+  always_comb begin
+    // m-mode only supported means no configuration
+    nmbits = 2'b0;
+
+    if (SSCLIC || USCLIC)
+      nmbits[0] = mclic_reg2hw.mcliccfg.nmbits.q[0];
+
+    if (SSCLIC && USCLIC)
+      nmbits[1] = mclic_reg2hw.mcliccfg.nmbits.q[1];
+  end
 
   logic [1:0] irq_mode_tmp;
 
