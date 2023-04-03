@@ -22,6 +22,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   parameter type reg_rsp_t = logic,
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
+  parameter bit  SSCLIC = 0,
+  parameter bit  USCLIC = 0,
   // do not edit below, these are derived
   localparam int SRC_W = $clog2(N_SOURCE)
 )(
@@ -45,6 +47,13 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   output logic             irq_kill_req_o,
   input  logic             irq_kill_ack_i
 );
+
+  if (USCLIC)
+    $fatal(1, "usclic mode is not supported");
+
+  localparam logic [1:0] U_MODE = 2'b00;
+  localparam logic [1:0] S_MODE = 2'b01;
+  localparam logic [1:0] M_MODE = 2'b11;
 
   mclic_reg2hw_t mclic_reg2hw;
 
@@ -109,8 +118,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     .irq_kill_ack_i
   );
 
-  // machine mode registers
-  // 0x0000
+  // configuration registers
+  // 0x0000 (machine mode)
   reg_req_t reg_mclic_req;
   reg_rsp_t reg_mclic_rsp;
 
@@ -130,7 +139,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   );
 
   // interrupt control and status registers (per interrupt line)
-  // 0x1000 - 0x4fff
+  // 0x1000 - 0x4fff (machine mode)
   reg_req_t reg_all_int_req;
   reg_rsp_t reg_all_int_rsp;
   logic [15:0] int_addr;
@@ -167,6 +176,13 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     );
   end
 
+  // configuration registers
+  // 0x8000 (supervisor mode)
+
+  // interrupt control and status register
+  // 0x9000 - 0xcfff (supervisor mode)
+  // mirror
+
   // top level address decoding and bus muxing
   always_comb begin : clic_addr_decode
     reg_mclic_req = '0;
@@ -182,6 +198,27 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
         reg_all_int_req = reg_req_i;
         reg_all_int_req.addr = reg_req_i.addr - 16'h1000;
         reg_rsp_o = reg_all_int_rsp;
+      end
+      16'h8000: begin
+        if (SSCLIC) begin
+          reg_mclic_req = reg_req_i;
+          reg_rsp_o = reg_mclic_rsp;
+        end
+      end
+      [16'h9000:16'hcfff]: begin
+        if (SSCLIC) begin
+          reg_all_int_req.addr = reg_req_i.addr - 16'h9000;
+          if (intmode[reg_all_int_req.addr[15:2]] <= S_MODE) begin
+            // check whether the irq we want to access is s-mode or lower
+            reg_all_int_req = reg_req_i;
+            reg_rsp_o = reg_all_int_rsp;
+          end else begin
+            // inaccesible (all zero)
+            reg_rsp_o.rdata = '0;
+            reg_rsp_o.error = '0;
+            reg_rsp_o.ready = 1'b1;
+          end
+        end
       end
       default: ;
     endcase // unique case (reg_req_i.addr)
