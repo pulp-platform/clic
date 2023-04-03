@@ -219,6 +219,10 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
           if (intmode[reg_all_int_req.addr[15:2]] <= S_MODE) begin
             // check whether the irq we want to access is s-mode or lower
             reg_all_int_req = reg_req_i;
+            // Prevent setting interrupt mode to m-mode . This is currently a
+            // bit ugly but will be nicer once we do away with auto generated
+            // clicint registers
+            reg_all_int_req.wdata[23] = 1'b0;
             reg_rsp_o = reg_all_int_rsp;
           end else begin
             // inaccesible (all zero)
