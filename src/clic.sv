@@ -228,7 +228,12 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
           end
         end
       end
-      default: ;
+      default: begin
+        // inaccesible (all zero)
+        reg_rsp_o.rdata = '0;
+        reg_rsp_o.error = '0;
+        reg_rsp_o.ready = 1'b1;
+      end
     endcase // unique case (reg_req_i.addr)
   end
 
