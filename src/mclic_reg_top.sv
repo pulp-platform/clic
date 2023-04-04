@@ -10,7 +10,7 @@
 module mclic_reg_top #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
-  parameter int AW = 2
+  parameter int AW = 3
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -80,6 +80,9 @@ module mclic_reg_top #(
   logic [3:0] mcliccfg_unlbits_wd;
   logic mcliccfg_unlbits_we;
   logic [3:0] mcliccfg_reserved_qs;
+  logic clicmnxticonf_qs;
+  logic clicmnxticonf_wd;
+  logic clicmnxticonf_we;
 
   // Register instances
   // R[mcliccfg]: V(False)
@@ -193,12 +196,40 @@ module mclic_reg_top #(
   assign mcliccfg_reserved_qs = 4'h0;
 
 
+  // R[clicmnxticonf]: V(False)
+
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_clicmnxticonf (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicmnxticonf_we),
+    .wd     (clicmnxticonf_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicmnxticonf.q ),
+
+    // to register interface (read)
+    .qs     (clicmnxticonf_qs)
+  );
 
 
-  logic [0:0] addr_hit;
+
+
+  logic [1:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[0] = (reg_addr == MCLIC_MCLICCFG_OFFSET);
+    addr_hit[1] = (reg_addr == MCLIC_CLICMNXTICONF_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -206,7 +237,8 @@ module mclic_reg_top #(
   // Check sub-word write is permitted
   always_comb begin
     wr_err = (reg_we &
-              ((addr_hit[0] & (|(MCLIC_PERMIT[0] & ~reg_be)))));
+              ((addr_hit[0] & (|(MCLIC_PERMIT[0] & ~reg_be))) |
+               (addr_hit[1] & (|(MCLIC_PERMIT[1] & ~reg_be)))));
   end
 
   assign mcliccfg_mnlbits_we = addr_hit[0] & reg_we & !reg_error;
@@ -221,6 +253,9 @@ module mclic_reg_top #(
   assign mcliccfg_unlbits_we = addr_hit[0] & reg_we & !reg_error;
   assign mcliccfg_unlbits_wd = reg_wdata[27:24];
 
+  assign clicmnxticonf_we = addr_hit[1] & reg_we & !reg_error;
+  assign clicmnxticonf_wd = reg_wdata[0];
+
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
@@ -231,6 +266,10 @@ module mclic_reg_top #(
         reg_rdata_next[19:16] = mcliccfg_snlbits_qs;
         reg_rdata_next[27:24] = mcliccfg_unlbits_qs;
         reg_rdata_next[31:28] = mcliccfg_reserved_qs;
+      end
+
+      addr_hit[1]: begin
+        reg_rdata_next[0] = clicmnxticonf_qs;
       end
 
       default: begin
@@ -255,7 +294,7 @@ endmodule
 
 module mclic_reg_top_intf
 #(
-  parameter int AW = 2,
+  parameter int AW = 3,
   localparam int DW = 32
 ) (
   input logic clk_i,

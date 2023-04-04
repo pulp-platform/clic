@@ -56,6 +56,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   localparam logic [1:0] M_MODE = 2'b11;
 
   localparam logic [15:0] MCLICCFG_START = 16'h0000;
+  localparam logic [15:0] MCLICCFG_END   = 16'h0800;
   localparam logic [15:0] MCLICINT_START = 16'h1000;
   localparam logic [15:0] MCLICINT_END   = 16'h4fff;
 
@@ -81,6 +82,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   logic [N_SOURCE-1:0] shv; // Handle per-irq SHV bits
 
   logic [N_SOURCE-1:0] claim;
+  logic                mnxti_cfg;
 
   // handle incoming interrupts
   clic_gateway #(
@@ -123,7 +125,9 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     .irq_mode_o  (irq_mode),
 
     .irq_kill_req_o,
-    .irq_kill_ack_i
+    .irq_kill_ack_i,
+
+    .mnxti_cfg_i (mnxti_cfg)
   );
 
   // configuration registers
@@ -198,7 +202,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     reg_rsp_o = '0;
 
     unique case(reg_req_i.addr[15:0]) inside
-      MCLICCFG_START: begin
+      [MCLICCFG_START:MCLICCFG_END]: begin
         reg_mclic_req = reg_req_i;
         reg_rsp_o = reg_mclic_rsp;
       end
@@ -261,7 +265,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     .ie_o      (ie),
     .le_o      (le),
 
-    .ip_i      (ip)
+    .ip_i      (ip),
+    .mnxti_cfg_o(mnxti_cfg)
   );
 
   // Create level and prio signals with dynamic indexing (#bits are read from
