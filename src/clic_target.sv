@@ -140,6 +140,7 @@ module clic_target #(
   logic irq_valid_d, irq_valid_q;
   logic irq_root_valid;
   logic irq_kill_req_d, irq_kill_req_q;
+  logic higher_irq;
   logic [SrcWidth-1:0]  irq_root_id, irq_id_d, irq_id_q;
   logic [PrioWidth-1:0] irq_max_d, irq_max_q;
   logic [ModeWidth-1:0] irq_mode_d, irq_mode_q;
