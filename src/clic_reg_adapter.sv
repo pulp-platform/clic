@@ -45,7 +45,8 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; impo
   output logic [N_SOURCE-1:0] ie_o,
   output logic [N_SOURCE-1:0] le_o,
 
-  input logic [N_SOURCE-1:0]  ip_i
+  input logic [N_SOURCE-1:0]  ip_i,
+  output logic mnxti_cfg_o
 );
 
   // We only support positive edge triggered and positive level triggered
@@ -72,4 +73,14 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; impo
     assign vsid_o[i+3] = clicintv_reg2hw[i/4].clicintv.vsid3.q;
     assign intv_o[i+3] = clicintv_reg2hw[i/4].clicintv.v3.q;
   end
+
+  for (genvar i = 0; i < MAX_VSCTXTS; i = i + 4) begin : gen_reghw_vs
+    assign vsprio_o[i+0] = clicvs_reg2hw[i/4].vsprio.prio0.q;
+    assign vsprio_o[i+1] = clicvs_reg2hw[i/4].vsprio.prio1.q;
+    assign vsprio_o[i+2] = clicvs_reg2hw[i/4].vsprio.prio2.q;
+    assign vsprio_o[i+3] = clicvs_reg2hw[i/4].vsprio.prio3.q;
+  end
+
+  assign mnxti_cfg_o = mclic_reg2hw.clicmnxticonf.q;
+
 endmodule // clic_reg_adapter

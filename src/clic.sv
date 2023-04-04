@@ -99,6 +99,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
 
   // Each privilege mode address space is aligned to a 32KiB physical memory region
   localparam logic [ADDR_W-1:0] MCLICCFG_START  = 'h00000;
+  localparam logic [ADDR_W-1:0] MCLICCFG_END    = 'h00800;
   localparam logic [ADDR_W-1:0] MCLICINT_START  = 'h01000;
   localparam logic [ADDR_W-1:0] MCLICINT_END    = 'h04fff;
 
@@ -145,6 +146,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   logic [N_SOURCE-1:0] shv; // Handle per-irq SHV bits
 
   logic [N_SOURCE-1:0] claim;
+  logic                mnxti_cfg;
 
   // handle incoming interrupts
   clic_gateway #(
@@ -198,7 +200,9 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
     .irq_shv_o,
 
     .irq_kill_req_o,
-    .irq_kill_ack_i
+    .irq_kill_ack_i,
+
+    .mnxti_cfg_i (mnxti_cfg)
   );
 
   // configuration registers
@@ -370,8 +374,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
 
     addr_tmp        = '0;
 
-    unique case(reg_req_i.addr[ADDR_W-1:0]) inside
-      MCLICCFG_START: begin
+    unique case(reg_req_i.addr[ADDR_W:0]) inside
+      [MCLICCFG_START:MCLICCFG_END]: begin
         reg_mclic_req = reg_req_i;
         reg_rsp_o = reg_mclic_rsp;
       end
@@ -523,7 +527,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
     .ie_o      (ie),
     .le_o      (le),
 
-    .ip_i      (ip)
+    .ip_i      (ip),
+    .mnxti_cfg_o(mnxti_cfg)
   );
 
   // Create level and prio signals with dynamic indexing (#bits are read from
