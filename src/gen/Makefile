@@ -29,10 +29,13 @@ clicint_reg_pkg.sv clicint_reg_top.sv: clicint.hjson
 mclic_reg_pkg.sv mclic_reg_top.sv: mclic.hjson
 	$(REGTOOL) -r $< -t .
 
-headers: clic.h
+headers: clic.h clicint.h
 
 clic.h: mclic.hjson
 	$(REGTOOL) --cdefines mclic.hjson > $@
+
+clicint.h: clicint.hjson
+	$(REGTOOL) --cdefines clicint.hjson > $@
 
 .PHONY: install
 install:
