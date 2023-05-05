@@ -1,4 +1,4 @@
-# Copyright 2022 ETH Zurich
+# Copyright 2023 ETH Zurich
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,34 +17,31 @@
 
 # Generate C header and SystemVerilog files
 
-ifndef $(REGTOOL)
-REGTOOL=../../../register_interface/vendor/lowrisc_opentitan/util/regtool.py
-endif
-ifndef $(NUM_INTERRUPT)
-NUM_INTERRUPT=256
-endif
-ifndef $(CLICINTCTLBITSL)
-CLICINTCTLBITS=8
-endif
+REGTOOL = regtool.py
 
-all: clic_reg_adapater.sv clic.hjson headers srcs
+all: headers srcs
 
-clic_reg_adapater.sv: clic_reg_adapter.sv.tpl
-	./clic.py -s $(NUM_INTERRUPT) -c $(CLICINTCTLBITS) < $< > $@
+srcs: clicint_reg_pkg.sv clicint_reg_top.sv mclic_reg_pkg.sv mclic_reg_top.sv
 
-srcs: clic_reg_pkg.sv clic_reg_top.sv
+clicint_reg_pkg.sv clicint_reg_top.sv: clicint.hjson
+	$(REGTOOL) -r $< -t .
 
-clic_reg_pkg.sv clic_reg_top.sv: clic.hjson
-	$(REGTOOL) -r clic.hjson -t .
+mclic_reg_pkg.sv mclic_reg_top.sv: mclic.hjson
+	$(REGTOOL) -r $< -t .
 
-clic.hjson: clic.hjson.tpl
-	./clic.py < $< > $@
+headers: clic.h clicint.h
 
-headers: clic.h
+clic.h: mclic.hjson
+	$(REGTOOL) --cdefines mclic.hjson > $@
 
-clic.h: clic.hjson
-	$(REGTOOL)  --cdefines clic.hjson > clic.h
+clicint.h: clicint.hjson
+	$(REGTOOL) --cdefines clicint.hjson > $@
 
+.PHONY: install
+install:
+	cp mclic_reg_pkg.sv mclic_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv ..
+
+.PHONY: clean
 clean:
-	rm clic.h clic.hjson clic_reg_adapater.sv clic_reg_pkg.sv clic_reg_top.sv
+	rm clic.h mclic_reg_pkg.sv mclic_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv
 

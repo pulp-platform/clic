@@ -31,30 +31,13 @@ def main():
                         type=argparse.FileType('r'),
                         default=sys.stdin,
                         help='input template file')
-    parser.add_argument('--sources',
-                        '-s',
-                        type=int,
-                        default=256,
-                        help='Number of interrupt sources')
-
-    parser.add_argument('--intctlbits',
-                        '-c',
-                        type=int,
-                        default=8,
-                        help='Number of interrupt control bits')
 
     args = parser.parse_args()
-
-    if args.intctlbits < 0 or args.intctlbits > 8:
-        print("ctlbits needs to be an integer n with 0 <= n <= 8",
-              file=sys.stderr)
-        exit(1)
 
     out = StringIO()
 
     tpl = Template(args.input.read())
-    out.write(tpl.render(src=args.sources,
-                         intctlbits=args.intctlbits))
+    out.write(tpl.render())
 
     print(out.getvalue())
     out.close()

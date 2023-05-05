@@ -19,17 +19,17 @@ package:
     - "Alessandro Ottaviano<aottaviano@iis.ee.ethz.ch>"
 
 dependencies:
-  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.21.0 }
-  register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: 0.3.1 }
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.26.0 }
+  register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: 0.3.9 }
 
 sources:
-    # - src/gen/clic_reg_pkg.sv
-    # - src/gen/clic_reg_top.sv
-    # - src/gen/clic_reg_adapater.sv
-  - src/clic_reg_pkg.sv
-  - src/clic_reg_top.sv
+  - src/clicint_reg_pkg.sv
+  - src/clicint_reg_top.sv
+  - src/mclic_reg_pkg.sv
+  - src/mclic_reg_top.sv
   - src/clic_reg_adapter.sv
   - src/clic_gateway.sv
   - src/clic_target.sv
+  - src/clic_apb.sv
   - src/clic.sv
 

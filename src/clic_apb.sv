@@ -19,7 +19,7 @@
 `include "register_interface/typedef.svh"
 `include "register_interface/assign.svh"
 
-module clic_apb import clic_reg_pkg::*; #(
+module clic_apb #(
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
   // do not edit below, these are derived
@@ -27,28 +27,32 @@ module clic_apb import clic_reg_pkg::*; #(
   localparam int unsigned REG_BUS_DATA_WIDTH = 32,
   localparam int SrcW    = $clog2(N_SOURCE)
 )(
-  input logic        clk_i,
-  input logic        rst_ni,
+  input logic                           clk_i,
+  input logic                           rst_ni,
 
   // Bus Interface (device)
-  input  logic                          penable_i,
-  input  logic                          pwrite_i,
-  input  logic [REG_BUS_ADDR_WIDTH-1:0] paddr_i,
-  input  logic                          psel_i,
-  input  logic [REG_BUS_DATA_WIDTH-1:0] pwdata_i,
+  input logic                           penable_i,
+  input logic                           pwrite_i,
+  input logic [REG_BUS_ADDR_WIDTH-1:0]  paddr_i,
+  input logic                           psel_i,
+  input logic [REG_BUS_DATA_WIDTH-1:0]  pwdata_i,
   output logic [REG_BUS_DATA_WIDTH-1:0] prdata_o,
   output logic                          pready_o,
   output logic                          pslverr_o,
 
   // Interrupt Sources
-  input [NumSrc-1:0] intr_src_i,
+  input [N_SOURCE-1:0]                  intr_src_i,
 
   // Interrupt notification to core
-  output             irq_valid_o,
-  input              irq_ready_i,
-  output [SrcW-1:0]  irq_id_o,
-  output [7:0]       irq_level_o,
-  output logic       irq_shv_o
+  output                                irq_valid_o,
+  input                                 irq_ready_i,
+  output [SrcW-1:0]                     irq_id_o,
+  output [7:0]                          irq_level_o,
+  output logic                          irq_shv_o,
+  output logic [1:0]                    irq_priv_o,
+  output logic                          irq_kill_req_o,
+  input logic                           irq_kill_ack_i
+
 );
 
 
@@ -109,7 +113,10 @@ module clic_apb import clic_reg_pkg::*; #(
     .irq_ready_i,
     .irq_id_o,
     .irq_level_o,
-    .irq_shv_o
+    .irq_shv_o,
+    .irq_priv_o,
+    .irq_kill_req_o,
+    .irq_kill_ack_i
   );
 
 endmodule // clic_apb

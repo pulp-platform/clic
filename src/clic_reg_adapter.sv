@@ -14,17 +14,20 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-module clic_reg_adapter import clic_reg_pkg::*; #(
+module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   parameter int N_SOURCE = 32,
   parameter int INTCTLBITS = 8
 )(
   input logic                 clk_i,
   input logic                 rst_ni,
 
-  input  clic_reg_pkg::clic_reg2hw_t reg2hw,
-  output clic_reg_pkg::clic_hw2reg_t hw2reg,
+  input  mclic_reg_pkg::mclic_reg2hw_t mclic_reg2hw,
+
+  input  clicint_reg_pkg::clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw,
+  output clicint_reg_pkg::clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg,
 
   output logic [7:0]          intctl_o [N_SOURCE],
+  output logic [1:0]          intmode_o [N_SOURCE],
   output logic [N_SOURCE-1:0] shv_o,
   output logic [N_SOURCE-1:0] ip_sw_o,
   output logic [N_SOURCE-1:0] ie_o,
@@ -33,23 +36,18 @@ module clic_reg_adapter import clic_reg_pkg::*; #(
   input logic [N_SOURCE-1:0]  ip_i
 );
 
-  if (N_SOURCE != clic_reg_pkg::NumSrc)
-    $fatal(1, "CLIC misconfigured: clic_reg_pkg::NumSrc needs to match N_SOURCE");
-
-  if (INTCTLBITS != clic_reg_pkg::ClicIntCtlBits)
-    $fatal(1, "CLIC misconfigured: clic_reg_pkg::ClicIntCtlBits needs to match INTCTLBITS");
-
   // We only support positive edge triggered and positive level triggered
   // interrupts atm. Either we hardware the trig.q[1] bit correctly or we
   // implement all modes
-  for (genvar i = 0; i < NumSrc; i++) begin : gen_reghw
-    assign intctl_o[i] = reg2hw.clicintctrl[i].q;
-    assign shv_o[i] = reg2hw.clicintattr[i].shv.q;
-    assign ip_sw_o[i] = reg2hw.clicintip[i].q;
-    assign ie_o[i] = reg2hw.clicintie[i].q;
-    assign hw2reg.clicintip[i].de = 1'b1; // Always write
-    assign hw2reg.clicintip[i].d  = ip_i[i];
-    assign le_o[i] = reg2hw.clicintattr[i].trig.q[0];
+  for (genvar i = 0; i < N_SOURCE; i++) begin : gen_reghw
+    assign intctl_o[i] = clicint_reg2hw[i].clicint.ctl.q;
+    assign intmode_o[i] = clicint_reg2hw[i].clicint.attr_mode.q;
+    assign shv_o[i] = clicint_reg2hw[i].clicint.attr_shv.q;
+    assign ip_sw_o[i] = clicint_reg2hw[i].clicint.ip.q;
+    assign ie_o[i] = clicint_reg2hw[i].clicint.ie.q;
+    assign clicint_hw2reg[i].clicint.ip.de = 1'b1; // Always write
+    assign clicint_hw2reg[i].clicint.ip.d  = ip_i[i];
+    assign le_o[i] = clicint_reg2hw[i].clicint.attr_trig.q[0];
   end
 
 endmodule // clic_reg_adapter
