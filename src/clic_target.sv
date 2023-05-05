@@ -237,14 +237,14 @@ module clic_target #(
       irq_id_q <= '0;
       irq_max_q <= '0;
       irq_mode_q <= '0;
-      irq_kill_req_q = 1'b0;
+      irq_kill_req_q <= 1'b0;
       irq_state_q <= IDLE;
     end else begin
       irq_valid_q <= irq_valid_d;
       irq_id_q <= irq_id_d;
       irq_max_q <= irq_max_d;
       irq_mode_q <= irq_mode_d;
-      irq_kill_req_q = irq_kill_req_d;
+      irq_kill_req_q <= irq_kill_req_d;
       irq_state_q <= irq_state_d;
     end
   end
