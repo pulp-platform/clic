@@ -43,5 +43,5 @@ install:
 
 .PHONY: clean
 clean:
-	rm clic.h mclic_reg_pkg.sv mclic_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv
+	rm clic.h clicint.h mclic_reg_pkg.sv mclic_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv
 
