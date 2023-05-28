@@ -21,10 +21,10 @@
   regwidth: "32",
   registers: [
     { name: "CLICINT",
-	    desc: "CLIC interrupt pending, enable, attribute and control",
-	    swaccess: "rw",
-	    hwaccess: "hro",
-	    fields: [
+      desc: "CLIC interrupt pending, enable, attribute and control",
+      swaccess: "rw",
+      hwaccess: "hro",
+      fields: [
         { bits: "31:24", name: "CTL", desc: "interrupt control for interrupt" },
         { bits: "23:22", name: "ATTR_MODE", desc: "privilege mode of this interrupt", resval: 3},
         //{ bits: "21:19", name: "reserved" },
@@ -34,7 +34,7 @@
         { bits: "7", name: "IE", desc: "interrupt enable for interrupt" },
 
         { bits: "0", name: "IP", desc: "interrupt pending for interrupt", hwaccess: "hrw" },
-	    ],
+      ],
     }
   ]
 }
