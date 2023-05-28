@@ -6,7 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0.] - 2022-02-03
+## [2.0.0] - 2023-05-28
+### Added
+- Design is now parametrizable through SystemVerilog without requiring an
+  intermediate codegen step through python
+- Kill handshake logic. Core and CLIC can now work together to allow higher
+  level interrupts to overtake current interrupts that used to be stuck in a
+  handshake.
+- S-mode support
+
+### Changed
+- Aligned to latest spec draft
+- Memory map now follows the current clic draft (ie, ip, attr, ctrl)
+
+### Fixed
+- Blocking assignments
+- Missing signal declarations
+
+## [1.0.1] - 2022-02-15
+### Fixed
+- Bender.yml wrong register_interface git address
+
+## [1.0.0] - 2022-02-03
 
 ### Added
 - Initial version of RISC-V Core Local Interrupt Controller (CLIC)
