@@ -116,7 +116,7 @@ module clicint_reg_top #(
   );
 
 
-  //   F[ie]: 7:7
+  //   F[ie]: 8:8
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RW"),
@@ -266,7 +266,7 @@ module clicint_reg_top #(
   assign clicint_ip_wd = reg_wdata[0];
 
   assign clicint_ie_we = addr_hit[0] & reg_we & !reg_error;
-  assign clicint_ie_wd = reg_wdata[7];
+  assign clicint_ie_wd = reg_wdata[8];
 
   assign clicint_attr_shv_we = addr_hit[0] & reg_we & !reg_error;
   assign clicint_attr_shv_wd = reg_wdata[16];
@@ -286,7 +286,7 @@ module clicint_reg_top #(
     unique case (1'b1)
       addr_hit[0]: begin
         reg_rdata_next[0] = clicint_ip_qs;
-        reg_rdata_next[7] = clicint_ie_qs;
+        reg_rdata_next[8] = clicint_ie_qs;
         reg_rdata_next[16] = clicint_attr_shv_qs;
         reg_rdata_next[18:17] = clicint_attr_trig_qs;
         reg_rdata_next[23:22] = clicint_attr_mode_qs;

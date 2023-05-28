@@ -271,7 +271,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   always_comb begin
     // Saturate nlbits if nlbits > clicintctlbits (nlbits > 0 && nlbits <= 8)
     mnlbits = INTCTLBITS;
-    if (mnlbits <= INTCTLBITS)
+    if (mclic_reg2hw.mcliccfg.mnlbits.q <= INTCTLBITS)
       mnlbits = mclic_reg2hw.mcliccfg.mnlbits.q;
   end
 
