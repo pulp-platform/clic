@@ -45,6 +45,7 @@ module clic_target #(
 
   input [PrioWidth-1:0]        prio_i [N_SOURCE],
   input [ModeWidth-1:0]        mode_i [N_SOURCE],
+  input logic                  intv_i [N_SOURCE],
 
   output logic [N_SOURCE-1:0]  claim_o,
 
@@ -60,6 +61,10 @@ module clic_target #(
 
   // this only works with 2 or more sources
   `ASSERT_INIT(NumSources_A, N_SOURCE >= 2)
+
+  localparam logic [1:0] U_MODE = 2'b00;
+  localparam logic [1:0] S_MODE = 2'b01;
+  localparam logic [1:0] M_MODE = 2'b11;
 
   // align to powers of 2 for simplicity
   // a full binary tree with N levels has 2**N + 2**N-1 nodes
@@ -96,7 +101,11 @@ module clic_target #(
           assign is_tree[Pa]  = ip_i[offset] & ie_i[offset];
           assign id_tree[Pa]  = offset;
           assign max_tree[Pa] = prio_i[offset];
-          assign mode_tree[Pa] = mode_i[offset];
+          // NOTE: save space by encoding the Virtualization bit in the privilege mode tree fields.
+          // This is done by temporarily elevating the privilege level of hypervisor IRQs (mode=S_MODE, intv=0) 
+          // to the reserved value 2'b10 so that they have higher priority than virtualized IRQs (S_MODE == 1'b01)
+          // but still lower priority than M_MODE IRQs (M_MODE == 2'b11). 
+          assign mode_tree[Pa] = ((mode_i[offset] == S_MODE) && ~intv_i[offset]) ? 2'b10 : mode_i[offset];
         end else begin : gen_tie_off
           assign is_tree[Pa]   = '0;
           assign id_tree[Pa]   = '0;
@@ -178,7 +187,8 @@ module clic_target #(
         if (irq_root_valid) begin
           irq_id_d = irq_root_id;
           irq_max_d = max_tree[0];
-          irq_mode_d = mode_tree[0];
+          // NOTE: If the interrupt priority was modified (see note above), restore nominal privilege
+          irq_mode_d = (mode_tree[0] == 2'b10) ? S_MODE : mode_tree[0];
           irq_valid_d = 1'b1;
           irq_state_d = ACK;
         end
