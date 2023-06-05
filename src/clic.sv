@@ -17,15 +17,20 @@
 
 `include "common_cells/assertions.svh"
 
-module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
+module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_reg_pkg::*; #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
   parameter bit  SSCLIC = 0,
   parameter bit  USCLIC = 0,
+  parameter bit  VSCLIC = 0, // vCLIC enable
+  parameter int unsigned N_VSCTXTS = 0, // Number of Virtual Contexts supported. 
+  //                                       This implementation assumes CLIC is mapped to an address 
+  //                                       range that allows up to 64 contexts (at least 512KiB)
   // do not edit below, these are derived
-  localparam int SRC_W = $clog2(N_SOURCE)
+  localparam int SRC_W = $clog2(N_SOURCE),
+  localparam int MAX_VSCTXTS = 64
 )(
   input logic        clk_i,
   input logic        rst_ni,
@@ -44,6 +49,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   output logic [7:0]       irq_level_o,
   output logic             irq_shv_o,
   output logic [1:0]       irq_priv_o,
+  output logic [5:0]       irq_vsid_o, // up to 64 VS contexts
+  output logic             irq_v_o,
   output logic             irq_kill_req_o,
   input  logic             irq_kill_ack_i
 );
@@ -51,28 +58,51 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   if (USCLIC)
     $fatal(1, "usclic mode is not supported");
 
+  if (N_VSCTXTS > MAX_VSCTXTS)
+    $fatal(1, "vsclic extension supports up to 64 virtual contexts");
+
+  // CLIC internal address size
+  localparam int unsigned ADDR_W = $clog2(MAX_VSCTXTS * 8 * 1024); // 19 
+
   localparam logic [1:0] U_MODE = 2'b00;
   localparam logic [1:0] S_MODE = 2'b01;
   localparam logic [1:0] M_MODE = 2'b11;
 
-  localparam logic [15:0] MCLICCFG_START = 16'h0000;
-  localparam logic [15:0] MCLICINT_START = 16'h1000;
-  localparam logic [15:0] MCLICINT_END   = 16'h4fff;
+  // Each privilege mode address space is aligned to a 8KiB physical memory region
+  localparam logic [ADDR_W-1:0] MCLICCFG_START  = 'h00000;
+  localparam logic [ADDR_W-1:0] MCLICINT_START  = 'h01000;
+  localparam logic [ADDR_W-1:0] MCLICINT_END    = 'h04fff;
+  localparam logic [ADDR_W-1:0] MCLICINTV_START = 'h05000;
+  localparam logic [ADDR_W-1:0] MCLICINTV_END   = 'h05fff;
 
-  localparam logic [15:0] SCLICCFG_START = 16'h8000;
-  localparam logic [15:0] SCLICINT_START = 16'h9000;
-  localparam logic [15:0] SCLICINT_END   = 16'hcfff;
+  localparam logic [ADDR_W-1:0] SCLICCFG_START  = 'h08000;
+  localparam logic [ADDR_W-1:0] SCLICINT_START  = 'h09000;
+  localparam logic [ADDR_W-1:0] SCLICINT_END    = 'h0cfff;
+  localparam logic [ADDR_W-1:0] SCLICINTV_START = 'h0d000;
+  localparam logic [ADDR_W-1:0] SCLICINTV_END   = 'h0dfff;
+
+  `define VSCLICCFG_START(i)  ('h08000 * (i + 2))
+  `define VSCLICINT_START(i)  ('h08000 * (i + 2) + 'h01000)
+  `define VSCLICINT_END(i)    ('h08000 * (i + 2) + 'h04fff)
+  `define VSCLICINTV_START(i) ('h08000 * (i + 2) + 'h05000)
+  `define VSCLICINTV_END(i)   ('h08000 * (i + 2) + 'h05fff)
 
   mclic_reg2hw_t mclic_reg2hw;
 
   clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw;
   clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg;
 
+  clicintv_reg2hw_t [N_SOURCE-1:0] clicintv_reg2hw;
+  // clicintv_hw2reg_t [N_SOURCE-1:0] clicintv_hw2reg;
+
   logic [7:0] intctl [N_SOURCE];
   logic [7:0] irq_max;
 
   logic [1:0] intmode [N_SOURCE];
   logic [1:0] irq_mode;
+
+  logic [5:0] vsid [N_SOURCE]; // Per-IRQ Virtual Supervisor (VS) ID
+  logic       intv [N_SOURCE]; // Per-IRQ virtualization bit
 
   logic [N_SOURCE-1:0] le; // 0: level-sensitive 1: edge-sensitive
   logic [N_SOURCE-1:0] ip;
@@ -113,6 +143,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
 
     .prio_i      (intctl),
     .mode_i      (intmode),
+    .intv_i      (intv),
 
     .claim_o     (claim),
 
@@ -150,14 +181,14 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   // 0x1000 - 0x4fff (machine mode)
   reg_req_t reg_all_int_req;
   reg_rsp_t reg_all_int_rsp;
-  logic [15:0] int_addr;
+  logic [ADDR_W-1:0] int_addr;
 
   reg_req_t [N_SOURCE-1:0] reg_int_req;
   reg_rsp_t [N_SOURCE-1:0] reg_int_rsp;
 
   // TODO: improve decoding by only deasserting valid
   always_comb begin
-    int_addr = reg_all_int_req.addr[15:2];
+    int_addr = reg_all_int_req.addr[ADDR_W-1:2];
 
     reg_int_req = '0;
     reg_all_int_rsp = '0;
@@ -184,6 +215,51 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     );
   end
 
+  // interrupt control and status registers (per interrupt line)
+  // 0x???? - 0x???? (machine mode)
+  reg_req_t reg_all_v_req;
+  reg_rsp_t reg_all_v_rsp;
+  logic [ADDR_W-1:0] v_addr;
+
+  reg_req_t [N_SOURCE-1:0] reg_v_req;
+  reg_rsp_t [N_SOURCE-1:0] reg_v_rsp;
+
+  if (VSCLIC) begin
+    
+    always_comb begin
+      reg_v_req       = '0;
+      reg_all_v_rsp   = '0;
+      
+      v_addr = reg_all_v_req.addr[ADDR_W-1:2];
+
+      reg_v_req[v_addr] = reg_all_v_req;
+      reg_all_v_rsp = reg_v_rsp[v_addr];
+    end
+
+    for (genvar i = 0; i < N_SOURCE; i++) begin : gen_clic_intv
+      clicintv_reg_top #(
+        .reg_req_t (reg_req_t),
+        .reg_rsp_t (reg_rsp_t)
+      ) i_clicintv_reg_top (
+        .clk_i,
+        .rst_ni,
+
+        .reg_req_i (reg_v_req[i]),
+        .reg_rsp_o (reg_v_rsp[i]),
+
+        .reg2hw (clicintv_reg2hw[i]),
+        // .hw2reg (clicintv_hw2reg[i]),
+
+        .devmode_i  (1'b1)
+      );
+    end
+  end else begin
+    assign clicintv_reg2hw = '0;
+    // assign clicintv_hw2reg = '0;
+    assign v_addr        = '0;
+    assign reg_all_v_rsp = '0;
+  end
+
   // configuration registers
   // 0x8000 (supervisor mode)
 
@@ -195,9 +271,10 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   always_comb begin : clic_addr_decode
     reg_mclic_req = '0;
     reg_all_int_req = '0;
+    reg_all_v_req = '0;
     reg_rsp_o = '0;
 
-    unique case(reg_req_i.addr[15:0]) inside
+    unique case(reg_req_i.addr[ADDR_W-1:0]) inside
       MCLICCFG_START: begin
         reg_mclic_req = reg_req_i;
         reg_rsp_o = reg_mclic_rsp;
@@ -206,6 +283,18 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
         reg_all_int_req = reg_req_i;
         reg_all_int_req.addr = reg_req_i.addr - MCLICINT_START;
         reg_rsp_o = reg_all_int_rsp;
+      end
+      [MCLICINTV_START:MCLICINTV_END]: begin
+        if (VSCLIC) begin
+          reg_all_v_req = reg_req_i;
+          reg_all_v_req.addr = reg_req_i.addr - MCLICINTV_START;
+          reg_rsp_o = reg_all_v_rsp;
+        end else begin
+          // VSCLIC disabled
+          reg_rsp_o.rdata = '0;
+          reg_rsp_o.error = '0;
+          reg_rsp_o.ready = 1'b1;
+        end
       end
       SCLICCFG_START: begin
         if (SSCLIC) begin
@@ -216,7 +305,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
       [SCLICINT_START:SCLICINT_END]: begin
         if (SSCLIC) begin
           reg_all_int_req.addr = reg_req_i.addr - SCLICINT_START;
-          if (intmode[reg_all_int_req.addr[15:2]] <= S_MODE) begin
+          if (intmode[reg_all_int_req.addr[ADDR_W-1:2]] <= S_MODE) begin
             // check whether the irq we want to access is s-mode or lower
             reg_all_int_req = reg_req_i;
             // Prevent setting interrupt mode to m-mode . This is currently a
@@ -232,6 +321,26 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
           end
         end
       end
+      [SCLICINTV_START:SCLICINTV_END]: begin
+        if (VSCLIC) begin
+          reg_all_v_req.addr = reg_req_i.addr - SCLICINTV_START;
+          if (intmode[reg_all_v_req.addr[ADDR_W-1:2]] <= S_MODE) begin
+            // check whether the irq we want to access is s-mode or lower
+            reg_all_v_req = reg_req_i;
+            reg_rsp_o = reg_all_v_rsp;
+          end else begin
+            // inaccesible (all zero)
+            reg_rsp_o.rdata = '0;
+            reg_rsp_o.error = '0;
+            reg_rsp_o.ready = 1'b1;
+          end
+        end else begin
+          // VSCLIC disabled
+          reg_rsp_o.rdata = '0;
+          reg_rsp_o.error = '0;
+          reg_rsp_o.ready = 1'b1;
+        end
+      end
       default: begin
         // inaccesible (all zero)
         reg_rsp_o.rdata = '0;
@@ -239,6 +348,47 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
         reg_rsp_o.ready = 1'b1;
       end
     endcase // unique case (reg_req_i.addr)
+
+    // Match VS address space
+    if (VSCLIC) begin
+      for (int i = 0; i < N_VSCTXTS; i++) begin
+        case(reg_req_i.addr[ADDR_W-1:0]) inside
+          // TODO: whether / how to grant access to MCLICCFG register
+          `VSCLICCFG_START(i): begin
+            // inaccesible (all zero)
+            reg_rsp_o.rdata = '0;
+            reg_rsp_o.error = '0;
+            reg_rsp_o.ready = 1'b1;
+          end
+          [`VSCLICINT_START(i):`VSCLICINT_END(i)]: begin
+            reg_all_int_req.addr = reg_req_i.addr - `VSCLICINT_START(i);
+            if ((intmode[reg_all_int_req.addr[ADDR_W-1:2]] == S_MODE) && 
+                (intv[reg_all_int_req.addr[ADDR_W-1:2]])              && 
+                (vsid[reg_all_int_req.addr[ADDR_W-1:2]] == i)) begin
+              // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
+              reg_all_int_req = reg_req_i;
+              // Prevent setting interrupt mode to m-mode . This is currently a
+              // bit ugly but will be nicer once we do away with auto generated
+              // clicint registers
+              reg_all_int_req.wdata[23] = 1'b0;
+              reg_rsp_o = reg_all_int_rsp;
+            end else begin
+              // inaccesible (all zero)
+              reg_rsp_o.rdata = '0;
+              reg_rsp_o.error = '0;
+              reg_rsp_o.ready = 1'b1;
+            end
+          end
+          // TODO: whether / how to grant access to CLICINTV registers
+          [`VSCLICINTV_START(i):`VSCLICINTV_END(i)]: begin
+            // inaccesible (all zero)
+            reg_rsp_o.rdata = '0;
+            reg_rsp_o.error = '0;
+            reg_rsp_o.ready = 1'b1;
+          end
+        endcase // case (reg_req_i.addr)
+      end
+    end
   end
 
   // adapter
@@ -254,9 +404,14 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     .clicint_reg2hw,
     .clicint_hw2reg,
 
+    .clicintv_reg2hw,
+    // .clicintv_hw2reg,
+
     .intctl_o  (intctl),
     .intmode_o (intmode),
     .shv_o     (shv),
+    .vsid_o    (vsid),
+    .intv_o    (intv),
     .ip_sw_o   (ip_sw),
     .ie_o      (ie),
     .le_o      (le),
@@ -277,6 +432,10 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
 
   // Extract SHV bit for the highest level, highest priority pending interrupt
   assign irq_shv_o = shv[irq_id_o];
+  
+  // Extract Virtual Supervisor ID for the highest level, highest priority pending interrupt
+  assign irq_vsid_o = (VSCLIC && (irq_priv_o == S_MODE)) ? vsid[irq_id_o] : '0;
+  assign irq_v_o    = (VSCLIC && (irq_priv_o == S_MODE)) ? intv[irq_id_o] : '0;
 
   logic [7:0] irq_level_tmp;
 
@@ -323,10 +482,10 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     // m-mode only supported means no configuration
     nmbits = 2'b0;
 
-    if (SSCLIC || USCLIC)
+    if (VSCLIC || SSCLIC || USCLIC)
       nmbits[0] = mclic_reg2hw.mcliccfg.nmbits.q[0];
 
-    if (SSCLIC && USCLIC)
+    if ((VSCLIC || SSCLIC) && USCLIC)
       nmbits[1] = mclic_reg2hw.mcliccfg.nmbits.q[1];
   end
 

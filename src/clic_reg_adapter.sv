@@ -14,7 +14,7 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
+module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_reg_pkg::*; #(
   parameter int N_SOURCE = 32,
   parameter int INTCTLBITS = 8
 )(
@@ -26,8 +26,13 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   input  clicint_reg_pkg::clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw,
   output clicint_reg_pkg::clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg,
 
+  input  clicintv_reg_pkg::clicintv_reg2hw_t [N_SOURCE-1:0] clicintv_reg2hw,
+  // output clicintv_reg_pkg::clicintv_hw2reg_t [N_SOURCE-1:0] clicintv_hw2reg,
+
   output logic [7:0]          intctl_o [N_SOURCE],
   output logic [1:0]          intmode_o [N_SOURCE],
+  output logic [5:0]          vsid_o [N_SOURCE], // interrupt VS id
+  output logic                intv_o [N_SOURCE], // interrupt virtualization
   output logic [N_SOURCE-1:0] shv_o,
   output logic [N_SOURCE-1:0] ip_sw_o,
   output logic [N_SOURCE-1:0] ie_o,
@@ -42,6 +47,8 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   for (genvar i = 0; i < N_SOURCE; i++) begin : gen_reghw
     assign intctl_o[i] = clicint_reg2hw[i].clicint.ctl.q;
     assign intmode_o[i] = clicint_reg2hw[i].clicint.attr_mode.q;
+    assign vsid_o[i] = clicintv_reg2hw[i].clicintv.vsid.q;
+    assign intv_o[i] = clicintv_reg2hw[i].clicintv.v.q;
     assign shv_o[i] = clicint_reg2hw[i].clicint.attr_shv.q;
     assign ip_sw_o[i] = clicint_reg2hw[i].clicint.ip.q;
     assign ie_o[i] = clicint_reg2hw[i].clicint.ie.q;
