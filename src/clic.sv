@@ -268,11 +268,17 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   // mirror
 
   // top level address decoding and bus muxing
+
+  // Helper signal used to store intermediate address
+  logic [ADDR_W-1:0] addr_tmp;
+  
   always_comb begin : clic_addr_decode
     reg_mclic_req = '0;
     reg_all_int_req = '0;
     reg_all_v_req = '0;
     reg_rsp_o = '0;
+
+    addr_tmp = '0;
 
     unique case(reg_req_i.addr[ADDR_W-1:0]) inside
       MCLICCFG_START: begin
@@ -304,10 +310,11 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
       end
       [SCLICINT_START:SCLICINT_END]: begin
         if (SSCLIC) begin
-          reg_all_int_req.addr = reg_req_i.addr - SCLICINT_START;
-          if (intmode[reg_all_int_req.addr[ADDR_W-1:2]] <= S_MODE) begin
+          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - SCLICINT_START;
+          if (intmode[addr_tmp[ADDR_W-1:2]] <= S_MODE) begin
             // check whether the irq we want to access is s-mode or lower
             reg_all_int_req = reg_req_i;
+            reg_all_int_req.addr = addr_tmp;
             // Prevent setting interrupt mode to m-mode . This is currently a
             // bit ugly but will be nicer once we do away with auto generated
             // clicint registers
@@ -323,10 +330,11 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
       end
       [SCLICINTV_START:SCLICINTV_END]: begin
         if (VSCLIC) begin
-          reg_all_v_req.addr = reg_req_i.addr - SCLICINTV_START;
-          if (intmode[reg_all_v_req.addr[ADDR_W-1:2]] <= S_MODE) begin
+          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - SCLICINTV_START;
+          if (intmode[addr_tmp[ADDR_W-1:2]] <= S_MODE) begin
             // check whether the irq we want to access is s-mode or lower
             reg_all_v_req = reg_req_i;
+            reg_all_v_req.addr = addr_tmp;
             reg_rsp_o = reg_all_v_rsp;
           end else begin
             // inaccesible (all zero)
@@ -361,12 +369,13 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
             reg_rsp_o.ready = 1'b1;
           end
           [`VSCLICINT_START(i):`VSCLICINT_END(i)]: begin
-            reg_all_int_req.addr = reg_req_i.addr - `VSCLICINT_START(i);
-            if ((intmode[reg_all_int_req.addr[ADDR_W-1:2]] == S_MODE) && 
-                (intv[reg_all_int_req.addr[ADDR_W-1:2]])              && 
-                (vsid[reg_all_int_req.addr[ADDR_W-1:2]] == i)) begin
+            addr_tmp = reg_req_i.addr[ADDR_W-1:0] - `VSCLICINT_START(i);
+            if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) && 
+                (intv[addr_tmp[ADDR_W-1:2]])              && 
+                (vsid[addr_tmp[ADDR_W-1:2]] == i)) begin
               // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
               reg_all_int_req = reg_req_i;
+              reg_all_int_req.addr = addr_tmp;
               // Prevent setting interrupt mode to m-mode . This is currently a
               // bit ugly but will be nicer once we do away with auto generated
               // clicint registers
