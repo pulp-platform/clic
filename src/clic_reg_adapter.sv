@@ -14,9 +14,12 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_reg_pkg::*; #(
+module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_reg_pkg::*; import clicvs_reg_pkg::*; #(
   parameter int N_SOURCE = 32,
-  parameter int INTCTLBITS = 8
+  parameter int INTCTLBITS = 8,
+  parameter int unsigned MAX_VSCTXTS = 64,
+  parameter int unsigned VsidWidth = 6,
+  parameter int unsigned VsprioWidth = 8
 )(
   input logic                 clk_i,
   input logic                 rst_ni,
@@ -29,10 +32,14 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; impo
   input  clicintv_reg_pkg::clicintv_reg2hw_t [(N_SOURCE/4)-1:0] clicintv_reg2hw,
   // output clicintv_reg_pkg::clicintv_hw2reg_t [(N_SOURCE/4)-1:0] clicintv_hw2reg,
 
-  output logic [7:0]          intctl_o [N_SOURCE],
-  output logic [1:0]          intmode_o [N_SOURCE],
-  output logic [5:0]          vsid_o [N_SOURCE], // interrupt VS id
-  output logic                intv_o [N_SOURCE], // interrupt virtualization
+  input  clicvs_reg_pkg::clicvs_reg2hw_t [(MAX_VSCTXTS/4)-1:0] clicvs_reg2hw,
+  // output clicvs_reg_pkg::clicvs_hw2reg_t [(MAX_VSCTXTS/4)-1:0] clicvs_hw2reg,
+
+  output logic [7:0]              intctl_o  [N_SOURCE],
+  output logic [1:0]              intmode_o [N_SOURCE],
+  output logic [VsidWidth-1:0]    vsid_o    [N_SOURCE], // interrupt VS id
+  output logic                    intv_o    [N_SOURCE], // interrupt virtualization
+  output logic [VsprioWidth-1:0]  vsprio_o  [MAX_VSCTXTS], // VS priority
   output logic [N_SOURCE-1:0] shv_o,
   output logic [N_SOURCE-1:0] ip_sw_o,
   output logic [N_SOURCE-1:0] ie_o,
