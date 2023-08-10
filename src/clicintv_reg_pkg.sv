@@ -7,7 +7,7 @@
 package clicintv_reg_pkg;
 
   // Address widths within the block
-  parameter int BlockAw = 0;
+  parameter int BlockAw = 2;
 
   ////////////////////////////
   // Typedefs for registers //
@@ -16,19 +16,37 @@ package clicintv_reg_pkg;
   typedef struct packed {
     struct packed {
       logic        q;
-    } v;
+    } v0;
     struct packed {
       logic [5:0]  q;
-    } vsid;
+    } vsid0;
+    struct packed {
+      logic        q;
+    } v1;
+    struct packed {
+      logic [5:0]  q;
+    } vsid1;
+    struct packed {
+      logic        q;
+    } v2;
+    struct packed {
+      logic [5:0]  q;
+    } vsid2;
+    struct packed {
+      logic        q;
+    } v3;
+    struct packed {
+      logic [5:0]  q;
+    } vsid3;
   } clicintv_reg2hw_clicintv_reg_t;
 
   // Register -> HW type
   typedef struct packed {
-    clicintv_reg2hw_clicintv_reg_t clicintv; // [6:0]
+    clicintv_reg2hw_clicintv_reg_t clicintv; // [27:0]
   } clicintv_reg2hw_t;
 
   // Register offsets
-  parameter logic [BlockAw-1:0] CLICINTV_CLICINTV_OFFSET = 0'h 0;
+  parameter logic [BlockAw-1:0] CLICINTV_CLICINTV_OFFSET = 2'h 0;
 
   // Register index
   typedef enum int {
@@ -37,7 +55,7 @@ package clicintv_reg_pkg;
 
   // Register width information to check illegal writes
   parameter logic [3:0] CLICINTV_PERMIT [1] = '{
-    4'b 0001  // index[0] CLICINTV_CLICINTV
+    4'b 1111  // index[0] CLICINTV_CLICINTV
   };
 
 endpackage

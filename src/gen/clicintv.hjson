@@ -18,16 +18,21 @@
     { protocol: "reg_iface", direction: "device" }
   ],
 
-  regwidth: "8",
+  regwidth: "32",
   registers: [
     { name: "CLICINTV",
       desc: "CLIC interrupt virtualization",
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
-        { bits: "7:2", name: "VSID", desc: "interrupt VS id" },
-        // { bits: "1", name: "reserved", desc: "reserved for future use"},
-        { bits: "0", name: "V", desc: "interrupt delegated to VS-mode"},
+        { bits: "31:26", name: "VSID3", desc: "interrupt VS id" },
+        { bits: "24", name: "V3", desc: "interrupt delegated to VS-mode"},
+        { bits: "23:18", name: "VSID2", desc: "interrupt VS id" },
+        { bits: "16", name: "V2", desc: "interrupt delegated to VS-mode"},
+        { bits: "15:10", name: "VSID1", desc: "interrupt VS id" },
+        { bits: "8", name: "V1", desc: "interrupt delegated to VS-mode"},
+        { bits: "7:2", name: "VSID0", desc: "interrupt VS id" },
+        { bits: "0", name: "V0", desc: "interrupt delegated to VS-mode"},
       ],
     }
   ]
