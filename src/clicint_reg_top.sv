@@ -8,12 +8,12 @@
 `include "common_cells/assertions.svh"
 
 module clicint_reg_top #(
-  parameter type reg_req_t = logic,
-  parameter type reg_rsp_t = logic,
-  parameter int AW = 2
+    parameter type reg_req_t = logic,
+    parameter type reg_rsp_t = logic,
+    parameter int AW = 2
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input clk_i,
+  input rst_ni,
   input  reg_req_t reg_req_i,
   output reg_rsp_t reg_rsp_o,
   // To HW
@@ -33,7 +33,7 @@ module clicint_reg_top #(
   // register signals
   logic           reg_we;
   logic           reg_re;
-  logic [BlockAw-1:0]  reg_addr;
+  logic [AW-1:0]  reg_addr;
   logic [DW-1:0]  reg_wdata;
   logic [DBW-1:0] reg_be;
   logic [DW-1:0]  reg_rdata;
@@ -54,7 +54,7 @@ module clicint_reg_top #(
 
   assign reg_we = reg_intf_req.valid & reg_intf_req.write;
   assign reg_re = reg_intf_req.valid & ~reg_intf_req.write;
-  assign reg_addr = reg_intf_req.addr[BlockAw-1:0];
+  assign reg_addr = reg_intf_req.addr;
   assign reg_wdata = reg_intf_req.wdata;
   assign reg_be = reg_intf_req.wstrb;
   assign reg_intf_rsp.rdata = reg_rdata;
@@ -116,7 +116,7 @@ module clicint_reg_top #(
   );
 
 
-  //   F[ie]: 7:7
+  //   F[ie]: 8:8
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RW"),
@@ -266,7 +266,7 @@ module clicint_reg_top #(
   assign clicint_ip_wd = reg_wdata[0];
 
   assign clicint_ie_we = addr_hit[0] & reg_we & !reg_error;
-  assign clicint_ie_wd = reg_wdata[7];
+  assign clicint_ie_wd = reg_wdata[8];
 
   assign clicint_attr_shv_we = addr_hit[0] & reg_we & !reg_error;
   assign clicint_attr_shv_wd = reg_wdata[16];
@@ -286,7 +286,7 @@ module clicint_reg_top #(
     unique case (1'b1)
       addr_hit[0]: begin
         reg_rdata_next[0] = clicint_ip_qs;
-        reg_rdata_next[7] = clicint_ie_qs;
+        reg_rdata_next[8] = clicint_ie_qs;
         reg_rdata_next[16] = clicint_attr_shv_qs;
         reg_rdata_next[18:17] = clicint_attr_trig_qs;
         reg_rdata_next[23:22] = clicint_attr_mode_qs;
@@ -312,55 +312,3 @@ module clicint_reg_top #(
   `ASSERT(en2addrHit, (reg_we || reg_re) |-> $onehot0(addr_hit))
 
 endmodule
-
-module clicint_reg_top_intf
-#(
-  parameter int AW = 2,
-  localparam int DW = 32
-) (
-  input logic clk_i,
-  input logic rst_ni,
-  REG_BUS.in  regbus_slave,
-  // To HW
-  output clicint_reg_pkg::clicint_reg2hw_t reg2hw, // Write
-  input  clicint_reg_pkg::clicint_hw2reg_t hw2reg, // Read
-  // Config
-  input devmode_i // If 1, explicit error return for unmapped register access
-);
- localparam int unsigned STRB_WIDTH = DW/8;
-
-`include "register_interface/typedef.svh"
-`include "register_interface/assign.svh"
-
-  // Define structs for reg_bus
-  typedef logic [AW-1:0] addr_t;
-  typedef logic [DW-1:0] data_t;
-  typedef logic [STRB_WIDTH-1:0] strb_t;
-  `REG_BUS_TYPEDEF_ALL(reg_bus, addr_t, data_t, strb_t)
-
-  reg_bus_req_t s_reg_req;
-  reg_bus_rsp_t s_reg_rsp;
-  
-  // Assign SV interface to structs
-  `REG_BUS_ASSIGN_TO_REQ(s_reg_req, regbus_slave)
-  `REG_BUS_ASSIGN_FROM_RSP(regbus_slave, s_reg_rsp)
-
-  
-
-  clicint_reg_top #(
-    .reg_req_t(reg_bus_req_t),
-    .reg_rsp_t(reg_bus_rsp_t),
-    .AW(AW)
-  ) i_regs (
-    .clk_i,
-    .rst_ni,
-    .reg_req_i(s_reg_req),
-    .reg_rsp_o(s_reg_rsp),
-    .reg2hw, // Write
-    .hw2reg, // Read
-    .devmode_i
-  );
-  
-endmodule
-
-
