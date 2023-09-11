@@ -15,22 +15,22 @@ package clicvs_reg_pkg;
 
   typedef struct packed {
     struct packed {
-      logic [7:0]  q;
+      logic        q;
     } prio0;
     struct packed {
-      logic [7:0]  q;
+      logic        q;
     } prio1;
     struct packed {
-      logic [7:0]  q;
+      logic        q;
     } prio2;
     struct packed {
-      logic [7:0]  q;
+      logic        q;
     } prio3;
   } clicvs_reg2hw_vsprio_reg_t;
 
   // Register -> HW type
   typedef struct packed {
-    clicvs_reg2hw_vsprio_reg_t vsprio; // [31:0]
+    clicvs_reg2hw_vsprio_reg_t vsprio; // [3:0]
   } clicvs_reg2hw_t;
 
   // Register offsets

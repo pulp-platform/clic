@@ -30,7 +30,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   parameter int unsigned N_VSCTXTS = 0, // Number of Virtual Contexts supported. 
                                         // This implementation assumes CLIC is mapped to an address 
                                         // range that allows up to 64 contexts (at least 512KiB)
-  parameter bit  VSPRIO = 0, // enable VS prioritization (requires VSCLIC)
+  parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
+  parameter int  VsprioWidth = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
   
   // do not edit below, these are derived
   localparam int SRC_W = $clog2(N_SOURCE),
@@ -115,10 +116,6 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   `define VSCLICINT_START(i)  ('h08000 * (i + 1) + 'h01000)
   `define VSCLICINT_END(i)    ('h08000 * (i + 1) + 'h04fff)
 
-  // Reduce area by setting wire width to 0 
-  // if VSPRIO extension is not enabled.
-  localparam VsprioWidth = 8; // VSPRIO ? 8 : 1;
-
   mclic_reg2hw_t mclic_reg2hw;
 
   clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw;
@@ -139,7 +136,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   logic [VSID_W-1:0] vsid [N_SOURCE]; // Per-IRQ Virtual Supervisor (VS) ID
   logic              intv [N_SOURCE]; // Per-IRQ virtualization bit
 
-  logic [VsprioWidth-1:0] vsprio [MAX_VSCTXTS];
+  logic [VsprioWidth-1:0] vsprio [MAX_VSCTXTS]; // Per-VS priority
 
   logic [N_SOURCE-1:0] le; // 0: level-sensitive 1: edge-sensitive
   logic [N_SOURCE-1:0] ip;
@@ -463,7 +460,6 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
     if (VSCLIC) begin
       for (int i = 1; i <= N_VSCTXTS; i++) begin
         case(reg_req_i.addr[ADDR_W-1:0]) inside
-          // TODO: whether / how to grant access to MCLICCFG register
           `VSCLICCFG_START(i): begin
             // inaccesible (all zero)
             reg_rsp_o.rdata = '0;

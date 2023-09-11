@@ -67,27 +67,27 @@ module clicvs_reg_top #(
   // Define SW related signals
   // Format: <reg>_<field>_{wd|we|qs}
   //        or <reg>_{wd|we|qs} if field == 1 or 0
-  logic [7:0] vsprio_prio0_qs;
-  logic [7:0] vsprio_prio0_wd;
+  logic vsprio_prio0_qs;
+  logic vsprio_prio0_wd;
   logic vsprio_prio0_we;
-  logic [7:0] vsprio_prio1_qs;
-  logic [7:0] vsprio_prio1_wd;
+  logic vsprio_prio1_qs;
+  logic vsprio_prio1_wd;
   logic vsprio_prio1_we;
-  logic [7:0] vsprio_prio2_qs;
-  logic [7:0] vsprio_prio2_wd;
+  logic vsprio_prio2_qs;
+  logic vsprio_prio2_wd;
   logic vsprio_prio2_we;
-  logic [7:0] vsprio_prio3_qs;
-  logic [7:0] vsprio_prio3_wd;
+  logic vsprio_prio3_qs;
+  logic vsprio_prio3_wd;
   logic vsprio_prio3_we;
 
   // Register instances
   // R[vsprio]: V(False)
 
-  //   F[prio0]: 7:0
+  //   F[prio0]: 0:0
   prim_subreg #(
-    .DW      (8),
+    .DW      (1),
     .SWACCESS("RW"),
-    .RESVAL  (8'h0)
+    .RESVAL  (1'h0)
   ) u_vsprio_prio0 (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -109,11 +109,11 @@ module clicvs_reg_top #(
   );
 
 
-  //   F[prio1]: 15:8
+  //   F[prio1]: 8:8
   prim_subreg #(
-    .DW      (8),
+    .DW      (1),
     .SWACCESS("RW"),
-    .RESVAL  (8'h0)
+    .RESVAL  (1'h0)
   ) u_vsprio_prio1 (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -135,11 +135,11 @@ module clicvs_reg_top #(
   );
 
 
-  //   F[prio2]: 23:16
+  //   F[prio2]: 16:16
   prim_subreg #(
-    .DW      (8),
+    .DW      (1),
     .SWACCESS("RW"),
-    .RESVAL  (8'h0)
+    .RESVAL  (1'h0)
   ) u_vsprio_prio2 (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -161,11 +161,11 @@ module clicvs_reg_top #(
   );
 
 
-  //   F[prio3]: 31:24
+  //   F[prio3]: 24:24
   prim_subreg #(
-    .DW      (8),
+    .DW      (1),
     .SWACCESS("RW"),
-    .RESVAL  (8'h0)
+    .RESVAL  (1'h0)
   ) u_vsprio_prio3 (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
@@ -204,26 +204,26 @@ module clicvs_reg_top #(
   end
 
   assign vsprio_prio0_we = addr_hit[0] & reg_we & !reg_error;
-  assign vsprio_prio0_wd = reg_wdata[7:0];
+  assign vsprio_prio0_wd = reg_wdata[0];
 
   assign vsprio_prio1_we = addr_hit[0] & reg_we & !reg_error;
-  assign vsprio_prio1_wd = reg_wdata[15:8];
+  assign vsprio_prio1_wd = reg_wdata[8];
 
   assign vsprio_prio2_we = addr_hit[0] & reg_we & !reg_error;
-  assign vsprio_prio2_wd = reg_wdata[23:16];
+  assign vsprio_prio2_wd = reg_wdata[16];
 
   assign vsprio_prio3_we = addr_hit[0] & reg_we & !reg_error;
-  assign vsprio_prio3_wd = reg_wdata[31:24];
+  assign vsprio_prio3_wd = reg_wdata[24];
 
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
     unique case (1'b1)
       addr_hit[0]: begin
-        reg_rdata_next[7:0] = vsprio_prio0_qs;
-        reg_rdata_next[15:8] = vsprio_prio1_qs;
-        reg_rdata_next[23:16] = vsprio_prio2_qs;
-        reg_rdata_next[31:24] = vsprio_prio3_qs;
+        reg_rdata_next[0] = vsprio_prio0_qs;
+        reg_rdata_next[8] = vsprio_prio1_qs;
+        reg_rdata_next[16] = vsprio_prio2_qs;
+        reg_rdata_next[24] = vsprio_prio3_qs;
       end
 
       default: begin
