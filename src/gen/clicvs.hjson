@@ -25,10 +25,10 @@
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
-        { bits: "31:24", name: "prio3", desc: "VS3 priority" },
-        { bits: "23:16", name: "prio2", desc: "VS2 priority" },
-        { bits: "15:8", name: "prio1", desc: "VS1 priority" },
-        { bits: "7:0", name: "prio0", desc: "VS0 priority" },
+        { bits: "24", name: "prio3", desc: "VS3 priority" },
+        { bits: "16", name: "prio2", desc: "VS2 priority" },
+        { bits:  "8", name: "prio1", desc: "VS1 priority" },
+        { bits:  "0", name: "prio0", desc: "VS0 priority" },
       ],
     }
   ]
