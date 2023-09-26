@@ -352,19 +352,26 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
     end
 
   end else begin
+    // If both V and Vprio are not enabled, tie all to 0'
+    // V
     assign clicintv_reg2hw    = '0;
-    // assign clicintv_hw2reg = '0;
     assign reg_v_req          = '0;
     assign reg_v_rsp          = '0;
     assign v_addr             = '0;
     assign reg_all_v_rsp      = '0;
+    // VS
+    assign clicvs_reg2hw      = '0;
+    assign reg_vs_req         = '0;
+    assign reg_vs_rsp         = '0;
+    assign vs_addr            = '0;
+    assign reg_all_vs_rsp     = '0;
   end
 
   // top level address decoding and bus muxing
 
   // Helper signal used to store intermediate address
   logic [ADDR_W-1:0] addr_tmp;
-  
+
   always_comb begin : clic_addr_decode
     reg_mclic_req   = '0;
     reg_all_int_req = '0;
