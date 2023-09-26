@@ -34,6 +34,14 @@
         { bits: "3:0", name: "mnlbits", desc: "number of interrupt level bits in machine mode" },
       ],
     },
+    { name: "CLICMNXTICONF",
+      desc: "CLIC enable mnxti irq forwarding logic",
+      swaccess: "rw",
+      hwaccess: "hro",
+      fields: [
+        { bits: "0" }
+      ],
+    },
   ]
 }
 

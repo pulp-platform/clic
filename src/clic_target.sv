@@ -55,7 +55,8 @@ module clic_target #(
   output logic [ModeWidth-1:0] irq_mode_o,
 
   output logic                 irq_kill_req_o,
-  input logic                  irq_kill_ack_i
+  input logic                  irq_kill_ack_i,
+  input logic                  mnxti_cfg_i
 );
 
   // this only works with 2 or more sources
@@ -185,9 +186,19 @@ module clic_target #(
       // wait for handshake
       ACK: begin
         irq_valid_d = 1'b1;
-        irq_id_d    = irq_id_q;
-        irq_max_d   = irq_max_q;
-        irq_mode_d   = irq_mode_q;
+        if (!mnxti_cfg_i) begin
+          irq_id_d   = irq_id_q;
+          irq_max_d  = irq_max_q;
+          irq_mode_d = irq_mode_q;
+        end else begin
+          if (irq_root_valid) begin
+            irq_id_d = irq_root_id;  // give irq_id_d the most updated value
+            irq_max_d = max_tree[0]; // give irq_max_d the most updated value
+          end else begin
+            irq_id_d = '0;
+            irq_max_d = '0;
+          end
+        end
         // level sensitive interrupts (le_i == 1'b0) can be cleared (ip_i goes
         // to 1'b0) and shouldn't fire anymore so we should get unstuck here
         if (!le_i[irq_id_q] && !ip_i[irq_id_q]) begin
