@@ -27,12 +27,12 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   parameter bit  VSCLIC = 0, // enable vCLIC (requires SSCLIC)
 
   // vCLIC dependent parameters
-  parameter int unsigned N_VSCTXTS = 0, // Number of Virtual Contexts supported. 
-                                        // This implementation assumes CLIC is mapped to an address 
+  parameter int unsigned N_VSCTXTS = 0, // Number of Virtual Contexts supported.
+                                        // This implementation assumes CLIC is mapped to an address
                                         // range that allows up to 64 contexts (at least 512KiB)
   parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
   parameter int  VsprioWidth = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
-  
+
   // do not edit below, these are derived
   localparam int SRC_W = $clog2(N_SOURCE),
   localparam int unsigned MAX_VSCTXTS = 64, // up to 64 VS contexts
@@ -83,8 +83,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   ///////////////////////////////////////////////////
   //
   // The address range is divided into blocks of 32KB.
-  // There is one block each for S-mode and M-mode, 
-  // and there are up to MAX_VSCTXTS extra blocks, 
+  // There is one block each for S-mode and M-mode,
+  // and there are up to MAX_VSCTXTS extra blocks,
   // one per guest VS.
   //
   // M_MODE   : [0x000000 - 0x007fff]
@@ -95,7 +95,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   // VS_64    : [0x208000 - 0x20ffff]
 
   // Some value between 16 (VSCLIC = 0) and 22 (64 VS contexts)
-  localparam int unsigned ADDR_W = $clog2((N_VSCTXTS + 2) * 32 * 1024); 
+  localparam int unsigned ADDR_W = $clog2((N_VSCTXTS + 2) * 32 * 1024);
 
   // Each privilege mode address space is aligned to a 32KiB physical memory region
   localparam logic [ADDR_W-1:0] MCLICCFG_START  = 'h00000;
@@ -281,11 +281,11 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   reg_rsp_t [(MAX_VSCTXTS/4)-1:0] reg_vs_rsp;
 
   if (VSCLIC) begin
-    
+
     always_comb begin
       reg_v_req       = '0;
       reg_all_v_rsp   = '0;
-      
+
       v_addr = reg_all_v_req.addr[ADDR_W-1:2];
 
       reg_v_req[v_addr] = reg_all_v_req;
@@ -309,21 +309,21 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
         .devmode_i  (1'b1)
       );
     end
-    
+
     if (VSPRIO) begin
 
       always_comb begin
         reg_vs_req       = '0;
         reg_all_vs_rsp   = '0;
-      
+
         vs_addr = reg_all_vs_req.addr[ADDR_W-1:2];
 
         reg_vs_req[vs_addr] = reg_all_vs_req;
         reg_all_vs_rsp = reg_vs_rsp[vs_addr];
       end
-      
+
       for(genvar i = 0; i < (MAX_VSCTXTS/4); i++) begin : gen_clic_vs
-          
+
         clicvs_reg_top #(
           .reg_req_t (reg_req_t),
           .reg_rsp_t (reg_rsp_t)
@@ -353,13 +353,13 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
 
   end else begin
     // If both V and Vprio are not enabled, tie all to 0'
-    // V
+    // VS
     assign clicintv_reg2hw    = '0;
     assign reg_v_req          = '0;
     assign reg_v_rsp          = '0;
     assign v_addr             = '0;
     assign reg_all_v_rsp      = '0;
-    // VS
+    // VSprio
     assign clicvs_reg2hw      = '0;
     assign reg_vs_req         = '0;
     assign reg_vs_rsp         = '0;
@@ -479,8 +479,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
           end
           [`VSCLICINT_START(i):`VSCLICINT_END(i)]: begin
             addr_tmp = reg_req_i.addr[ADDR_W-1:0] - `VSCLICINT_START(i);
-            if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) && 
-                (intv[addr_tmp[ADDR_W-1:2]])              && 
+            if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) &&
+                (intv[addr_tmp[ADDR_W-1:2]])              &&
                 (vsid[addr_tmp[ADDR_W-1:2]] == i)) begin
               // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
               reg_all_int_req = reg_req_i;

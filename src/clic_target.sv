@@ -117,9 +117,9 @@ module clic_target #(
           assign is_tree[Pa]  = ip_i[offset] & ie_i[offset];
           assign id_tree[Pa]  = offset;
           // NOTE: save space by encoding the Virtualization bit in the privilege mode tree fields.
-          // This is done by temporarily elevating the privilege level of hypervisor IRQs (mode=S_MODE, intv=0) 
+          // This is done by temporarily elevating the privilege level of hypervisor IRQs (mode=S_MODE, intv=0)
           // to the reserved value 2'b10 so that they have higher priority than virtualized IRQs (S_MODE == 1'b01)
-          // but still lower priority than M_MODE IRQs (M_MODE == 2'b11). 
+          // but still lower priority than M_MODE IRQs (M_MODE == 2'b11).
           assign max_tree[Pa].mode   = ((mode_i[offset] == S_MODE) && ~intv_i[offset]) ? 2'b10 : mode_i[offset];
           assign max_tree[Pa].vsprio = ((mode_i[offset] == S_MODE) && intv_i[offset]) ? vsprio_i[vsid_i[offset]] : '0;
           assign max_tree[Pa].prio   = prio_i[offset];
