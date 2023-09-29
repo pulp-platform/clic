@@ -381,7 +381,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
 
     addr_tmp        = '0;
 
-    unique case(reg_req_i.addr[ADDR_W:0]) inside
+    unique case(reg_req_i.addr[ADDR_W-1:0]) inside
       [MCLICCFG_START:MCLICCFG_END]: begin
         reg_mclic_req = reg_req_i;
         reg_rsp_o = reg_mclic_rsp;
