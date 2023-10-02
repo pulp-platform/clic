@@ -224,9 +224,11 @@ module clic_target #(
           if (irq_root_valid) begin
             irq_id_d = irq_root_id;  // give irq_id_d the most updated value
             irq_max_d = max_tree[0]; // give irq_max_d the most updated value
+            shv_max_d = shv_i[irq_root_id];
           end else begin
             irq_id_d = '0;
             irq_max_d = '0;
+            shv_max_d  = shv_max_q;
           end
         end
         // level sensitive interrupts (le_i == 1'b0) can be cleared (ip_i goes
