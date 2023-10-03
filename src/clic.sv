@@ -470,34 +470,32 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
     // Match VS address space
     if (VSCLIC) begin
       for (int i = 1; i <= N_VSCTXTS; i++) begin
-        case(reg_req_i.addr[ADDR_W-1:0]) inside
-          `VSCLICCFG_START(i): begin
+        if (reg_req_i.addr[ADDR_W-1:0] == `VSCLICCFG_START(i)) begin
+            // inaccesible (all zero)
+            reg_rsp_o.rdata = '0;
+            reg_rsp_o.error = '0;
+            reg_rsp_o.ready = 1'b1;
+        end else if (`VSCLICINT_START(i) >= reg_req_i.addr[ADDR_W-1:0] &&
+                     reg_req_i.addr[ADDR_W-1:0] <= `VSCLICINT_END(i)) begin
+          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - `VSCLICINT_START(i);
+          if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) &&
+              (intv[addr_tmp[ADDR_W-1:2]])              &&
+              (vsid[addr_tmp[ADDR_W-1:2]] == i)) begin
+            // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
+            reg_all_int_req = reg_req_i;
+            reg_all_int_req.addr = addr_tmp;
+            // Prevent setting interrupt mode to m-mode . This is currently a
+            // bit ugly but will be nicer once we do away with auto generated
+            // clicint registers
+            reg_all_int_req.wdata[23] = 1'b0;
+            reg_rsp_o = reg_all_int_rsp;
+          end else begin
             // inaccesible (all zero)
             reg_rsp_o.rdata = '0;
             reg_rsp_o.error = '0;
             reg_rsp_o.ready = 1'b1;
           end
-          [`VSCLICINT_START(i):`VSCLICINT_END(i)]: begin
-            addr_tmp = reg_req_i.addr[ADDR_W-1:0] - `VSCLICINT_START(i);
-            if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) &&
-                (intv[addr_tmp[ADDR_W-1:2]])              &&
-                (vsid[addr_tmp[ADDR_W-1:2]] == i)) begin
-              // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
-              reg_all_int_req = reg_req_i;
-              reg_all_int_req.addr = addr_tmp;
-              // Prevent setting interrupt mode to m-mode . This is currently a
-              // bit ugly but will be nicer once we do away with auto generated
-              // clicint registers
-              reg_all_int_req.wdata[23] = 1'b0;
-              reg_rsp_o = reg_all_int_rsp;
-            end else begin
-              // inaccesible (all zero)
-              reg_rsp_o.rdata = '0;
-              reg_rsp_o.error = '0;
-              reg_rsp_o.ready = 1'b1;
-            end
-          end
-        endcase // case (reg_req_i.addr)
+        end
       end
     end
   end
