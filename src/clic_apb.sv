@@ -20,12 +20,19 @@
 `include "register_interface/assign.svh"
 
 module clic_apb #(
-  parameter int  N_SOURCE = 256,
-  parameter int  INTCTLBITS = 8,
+  parameter int           N_SOURCE = 256,
+  parameter int           INTCTLBITS = 8,
+  parameter bit           SSCLIC = 0,
+  parameter bit           USCLIC = 0,
+  parameter bit           VSCLIC = 0,
+  parameter int unsigned  N_VSCTXTS = 0,
+  parameter bit           VSPRIO = 0,
+  parameter int           VsprioWidth = 1,
+
   // do not edit below, these are derived
   localparam int unsigned REG_BUS_ADDR_WIDTH = 32,
   localparam int unsigned REG_BUS_DATA_WIDTH = 32,
-  localparam int SrcW    = $clog2(N_SOURCE)
+  localparam int          SrcW = $clog2(N_SOURCE)
 )(
   input logic                           clk_i,
   input logic                           rst_ni,
@@ -96,10 +103,16 @@ module clic_apb #(
   assign reg_bus.ready = clic_rsp.ready;
 
   clic #(
+    .reg_req_t ( reg_a32_d32_req_t ),
+    .reg_rsp_t ( reg_a32_d32_rsp_t ),
     .N_SOURCE  ( N_SOURCE          ),
     .INTCTLBITS( INTCTLBITS        ),
-    .reg_req_t ( reg_a32_d32_req_t ),
-    .reg_rsp_t ( reg_a32_d32_rsp_t )
+    .SSCLIC    ( SSCLIC            ),
+    .USCLIC    ( USCLIC            ),
+    .VSCLIC    ( VSCLIC            ),
+    .N_VSCTXTS ( N_VSCTXTS         ),
+    .VSPRIO    ( VSPRIO            ),
+    .VsprioWidth(VsprioWidth       )
   ) i_clic (
     .clk_i,
     .rst_ni,
