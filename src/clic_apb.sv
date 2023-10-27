@@ -21,6 +21,7 @@
 
 module clic_apb #(
   parameter int           N_SOURCE = 256,
+  parameter int           N_PIPE = 1,
   parameter int           INTCTLBITS = 8,
   parameter bit           SSCLIC = 0,
   parameter bit           USCLIC = 0,
@@ -110,6 +111,7 @@ module clic_apb #(
     .reg_req_t ( reg_a32_d32_req_t ),
     .reg_rsp_t ( reg_a32_d32_rsp_t ),
     .N_SOURCE  ( N_SOURCE          ),
+    .N_PIPE    ( N_PIPE            ),
     .INTCTLBITS( INTCTLBITS        ),
     .SSCLIC    ( SSCLIC            ),
     .USCLIC    ( USCLIC            ),
