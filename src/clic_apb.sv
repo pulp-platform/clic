@@ -54,10 +54,10 @@ module clic_apb #(
   input [N_SOURCE-1:0]                  intr_src_i,
 
   // Interrupt notification to core
-  output                                irq_valid_o,
-  input                                 irq_ready_i,
-  output [SrcW-1:0]                     irq_id_o,
-  output [7:0]                          irq_level_o,
+  output logic                          irq_valid_o,
+  input logic                           irq_ready_i,
+  output logic [SrcW-1:0]               irq_id_o,
+  output logic [7:0]                    irq_level_o,
   output logic                          irq_shv_o,
   output logic [1:0]                    irq_priv_o,
   output logic [VSID_W-1:0]             irq_vsid_o,

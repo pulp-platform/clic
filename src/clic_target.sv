@@ -40,35 +40,35 @@ module clic_target #(
   // derived parameters do not change this
   localparam int SrcWidth  = $clog2(N_SOURCE)  // derived parameter
 ) (
-  input                        clk_i,
-  input                        rst_ni,
+  input logic                   clk_i,
+  input logic                   rst_ni,
 
-  input [N_SOURCE-1:0]         ip_i,
-  input [N_SOURCE-1:0]         ie_i,
-  input [N_SOURCE-1:0]         le_i,
-  input [N_SOURCE-1:0]         shv_i,
+  input logic [N_SOURCE-1:0]    ip_i,
+  input logic [N_SOURCE-1:0]    ie_i,
+  input logic [N_SOURCE-1:0]    le_i,
+  input logic [N_SOURCE-1:0]    shv_i,
 
-  input [PrioWidth-1:0]        prio_i [N_SOURCE],
-  input [ModeWidth-1:0]        mode_i [N_SOURCE],
-  input logic                  intv_i [N_SOURCE],
-  input [VsidWidth-1:0]        vsid_i [N_SOURCE],
+  input logic [PrioWidth-1:0]   prio_i [N_SOURCE],
+  input logic [ModeWidth-1:0]   mode_i [N_SOURCE],
+  input logic                   intv_i [N_SOURCE],
+  input logic [VsidWidth-1:0]   vsid_i [N_SOURCE],
 
-  input [VsprioWidth-1:0]      vsprio_i [MAX_VSCTXTS],
+  input logic [VsprioWidth-1:0] vsprio_i [MAX_VSCTXTS],
 
-  output logic [N_SOURCE-1:0]  claim_o,
+  output logic [N_SOURCE-1:0]   claim_o,
 
-  output logic                 irq_valid_o,
-  input logic                  irq_ready_i,
-  output logic [SrcWidth-1:0]  irq_id_o,
-  output logic [PrioWidth-1:0] irq_max_o,
-  output logic [ModeWidth-1:0] irq_mode_o,
-  output logic [VsidWidth-1:0] irq_vsid_o,
-  output logic                 irq_v_o,
-  output logic                 irq_shv_o,
+  output logic                  irq_valid_o,
+  input logic                   irq_ready_i,
+  output logic [SrcWidth-1:0]   irq_id_o,
+  output logic [PrioWidth-1:0]  irq_max_o,
+  output logic [ModeWidth-1:0]  irq_mode_o,
+  output logic [VsidWidth-1:0]  irq_vsid_o,
+  output logic                  irq_v_o,
+  output logic                  irq_shv_o,
 
-  output logic                 irq_kill_req_o,
-  input logic                  irq_kill_ack_i,
-  input logic                  mnxti_cfg_i
+  output logic                  irq_kill_req_o,
+  input logic                   irq_kill_ack_i,
+  input logic                   mnxti_cfg_i
 );
 
   // this only works with 2 or more sources

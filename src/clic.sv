@@ -39,27 +39,27 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   localparam int unsigned MAX_VSCTXTS = 64, // up to 64 VS contexts
   localparam int unsigned VSID_W = $clog2(MAX_VSCTXTS)
 )(
-  input logic        clk_i,
-  input logic        rst_ni,
+  input logic                clk_i,
+  input logic                rst_ni,
 
   // Bus Interface (device)
-  input reg_req_t    reg_req_i,
-  output reg_rsp_t   reg_rsp_o,
+  input            reg_req_t reg_req_i,
+  output           reg_rsp_t reg_rsp_o,
 
   // Interrupt Sources
-  input [N_SOURCE-1:0] intr_src_i,
+  input logic [N_SOURCE-1:0] intr_src_i,
 
   // Interrupt notification to core
-  output logic              irq_valid_o,
-  input  logic              irq_ready_i,
-  output logic [SRC_W-1:0]  irq_id_o,
-  output logic [7:0]        irq_level_o,
-  output logic              irq_shv_o,
-  output logic [1:0]        irq_priv_o,
-  output logic [VSID_W-1:0] irq_vsid_o,
-  output logic              irq_v_o,
-  output logic              irq_kill_req_o,
-  input  logic              irq_kill_ack_i
+  output logic               irq_valid_o,
+  input logic                irq_ready_i,
+  output logic [SRC_W-1:0]   irq_id_o,
+  output logic [7:0]         irq_level_o,
+  output logic               irq_shv_o,
+  output logic [1:0]         irq_priv_o,
+  output logic [VSID_W-1:0]  irq_vsid_o,
+  output logic               irq_v_o,
+  output logic               irq_kill_req_o,
+  input logic                irq_kill_ack_i
 );
 
   if (USCLIC)
