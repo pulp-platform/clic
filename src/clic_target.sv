@@ -185,7 +185,7 @@ module clic_target #(
     // TODO: remove useless inequality comparison
     assign irq_root_valid = (max_tree[0] > '0) ? is_tree[0] : 1'b0;
     assign irq_root_id    = (is_tree[0]) ? id_tree[0] : '0;
-  end if (N_PIPE == 1) begin : gen_pipe
+  end else if (N_PIPE == 1) begin : gen_pipe
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
         irq_root_valid <= '0;
