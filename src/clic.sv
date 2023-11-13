@@ -20,7 +20,7 @@
 module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_reg_pkg::*; import clicvs_reg_pkg::*; #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
-  parameter int  N_PIPE   = 1, // Number of pipeline stages in priority tree. Increases interrupt latency.
+  parameter int  N_PIPE   = 0, // Number of pipeline stages in priority tree. Increases interrupt latency.
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
   parameter bit  SSCLIC = 0,

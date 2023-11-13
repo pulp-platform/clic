@@ -21,7 +21,7 @@
 
 module clic_apb #(
   parameter int           N_SOURCE = 256,
-  parameter int           N_PIPE = 1,
+  parameter int           N_PIPE = 0,
   parameter int           INTCTLBITS = 8,
   parameter bit           SSCLIC = 0,
   parameter bit           USCLIC = 0,
