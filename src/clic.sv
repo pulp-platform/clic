@@ -477,7 +477,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
             reg_rsp_o.rdata = '0;
             reg_rsp_o.error = '0;
             reg_rsp_o.ready = 1'b1;
-        end else if (`VSCLICINT_START(i) >= reg_req_i.addr[ADDR_W-1:0] &&
+        end else if (`VSCLICINT_START(i) <= reg_req_i.addr[ADDR_W-1:0] &&
                      reg_req_i.addr[ADDR_W-1:0] <= `VSCLICINT_END(i)) begin
           addr_tmp = reg_req_i.addr[ADDR_W-1:0] - `VSCLICINT_START(i);
           if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) &&
