@@ -21,6 +21,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
   parameter int  N_SOURCE = 256,
+  parameter int  N_PIPE = 1,
   parameter int  INTCTLBITS = 8,
   parameter bit  SSCLIC = 0,
   parameter bit  USCLIC = 0,
@@ -167,6 +168,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   // generate interrupt depending on ip, ie, level and priority
   clic_target #(
     .N_SOURCE    (N_SOURCE),
+    .N_PIPE      (N_PIPE),
     .MAX_VSCTXTS (MAX_VSCTXTS),
     .PrioWidth   (INTCTLBITS),
     .ModeWidth   (2),

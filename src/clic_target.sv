@@ -30,6 +30,7 @@
 
 module clic_target #(
   parameter int unsigned N_SOURCE    = 256,
+  parameter int unsigned N_PIPE      = 1,
   parameter int unsigned MAX_VSCTXTS = 64,
   parameter int unsigned PrioWidth   = 8,
   parameter int unsigned ModeWidth   = 2,
@@ -86,9 +87,9 @@ module clic_target #(
   // align to powers of 2 for simplicity
   // a full binary tree with N levels has 2**N + 2**N-1 nodes
   localparam int NumLevels = $clog2(N_SOURCE);
-  logic  [2**(NumLevels+1)-2:0]                is_tree;
-  logic  [2**(NumLevels+1)-2:0][SrcWidth-1:0]  id_tree;
-  prio_t [2**(NumLevels+1)-2:0]                max_tree;
+  logic  [2**(NumLevels+1)-2:0]                is_tree, is_tree_q;
+  logic  [2**(NumLevels+1)-2:0][SrcWidth-1:0]  id_tree, id_tree_q;
+  prio_t [2**(NumLevels+1)-2:0]                max_tree, max_tree_q;
 
   for (genvar level = 0; level < NumLevels+1; level++) begin : gen_tree
     //
@@ -173,10 +174,26 @@ module clic_target #(
   logic [VsidWidth-1:0] vsid_max_d, vsid_max_q;
   logic                 shv_max_d, shv_max_q;
 
-  // the results can be found at the tree root
-  // TODO: remove useless inequality comparison
-  assign irq_root_valid = (max_tree[0] > '0) ? is_tree[0] : 1'b0;
-  assign irq_root_id    = (is_tree[0]) ? id_tree[0] : '0;
+  if (N_PIPE == 0) begin : gen_no_pipe
+    assign max_tree_q = max_tree;
+    assign is_tree_q = is_tree;
+    assign id_tree_q = id_tree;
+  end else begin: gen_pipe
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (~rst_ni) begin
+        max_tree_q <= '0;
+        is_tree_q <= '0;
+        id_tree_q <= '0;
+      end else begin
+        max_tree_q <= max_tree;
+        is_tree_q <= is_tree;
+        id_tree_q <= id_tree;
+      end
+    end
+  end
+
+  assign irq_root_valid = (max_tree_q[0] > '0) ? is_tree_q[0] : 1'b0;
+  assign irq_root_id    = (is_tree_q[0]) ? id_tree_q[0] : '0;
 
   // higher level interrupt is available than the one we are currently processing
   // TODO: maybe add pipe?
@@ -206,7 +223,7 @@ module clic_target #(
       IDLE:
         if (irq_root_valid) begin
           irq_id_d = irq_root_id;
-          irq_max_d = max_tree[0];
+          irq_max_d = max_tree_q[0];
           vsid_max_d = vsid_i[irq_root_id];
           shv_max_d = shv_i[irq_root_id];
           irq_valid_d = 1'b1;
@@ -223,7 +240,7 @@ module clic_target #(
         end else begin
           if (irq_root_valid) begin
             irq_id_d = irq_root_id;  // give irq_id_d the most updated value
-            irq_max_d = max_tree[0]; // give irq_max_d the most updated value
+            irq_max_d = max_tree_q[0]; // give irq_max_d the most updated value
             shv_max_d = shv_i[irq_root_id];
           end else begin
             irq_id_d = '0;
