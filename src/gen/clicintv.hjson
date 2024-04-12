@@ -10,9 +10,9 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-# CLIC m-mode registers
+// CLIC virtual supervisor interrupt register
 {
-  name: "MCLIC",
+  name: "CLICINTV",
   clock_primary: "clk_i",
   bus_interfaces: [
     { protocol: "reg_iface", direction: "device" }
@@ -20,28 +20,20 @@
 
   regwidth: "32",
   registers: [
-    { name: "MCLICCFG",
-      desc: "CLIC configuration",
+    { name: "CLICINTV",
+      desc: "CLIC interrupt virtualization",
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
-        { bits: "31:28", name: "reserved", desc: "reserved", swaccess: "ro", hwaccess: "none" },  # workaround for full 32-bit access
-        { bits: "27:24", name: "unlbits", desc: "number of privilege mode bits in user mode" },
-        //{ bits: "23:20", name: "reserved" },
-        { bits: "19:16", name: "snlbits", desc: "number of privilege mode bits in supervisor mode" },
-        //{ bits: "15:6", name: "reserved" },
-        { bits: "5:4", name: "nmbits", desc: "number of privilege mode bits" },
-        { bits: "3:0", name: "mnlbits", desc: "number of interrupt level bits in machine mode" },
+        { bits: "31:26", name: "VSID3", desc: "interrupt VS id" },
+        { bits: "24", name: "V3", desc: "interrupt delegated to VS-mode"},
+        { bits: "23:18", name: "VSID2", desc: "interrupt VS id" },
+        { bits: "16", name: "V2", desc: "interrupt delegated to VS-mode"},
+        { bits: "15:10", name: "VSID1", desc: "interrupt VS id" },
+        { bits: "8", name: "V1", desc: "interrupt delegated to VS-mode"},
+        { bits: "7:2", name: "VSID0", desc: "interrupt VS id" },
+        { bits: "0", name: "V0", desc: "interrupt delegated to VS-mode"},
       ],
-    },
-    { name: "CLICMNXTICONF",
-      desc: "CLIC enable mnxti irq forwarding logic",
-      swaccess: "rw",
-      hwaccess: "hro",
-      fields: [
-        { bits: "0" }
-      ],
-    },
+    }
   ]
 }
-

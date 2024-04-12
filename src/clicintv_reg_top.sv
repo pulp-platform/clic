@@ -7,24 +7,24 @@
 
 `include "common_cells/assertions.svh"
 
-module mclic_reg_top #(
+module clicintv_reg_top #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
-  parameter int AW = 3
+  parameter int AW = 2
 ) (
   input logic clk_i,
   input logic rst_ni,
   input  reg_req_t reg_req_i,
   output reg_rsp_t reg_rsp_o,
   // To HW
-  output mclic_reg_pkg::mclic_reg2hw_t reg2hw, // Write
+  output clicintv_reg_pkg::clicintv_reg2hw_t reg2hw, // Write
 
 
   // Config
   input devmode_i // If 1, explicit error return for unmapped register access
 );
 
-  import mclic_reg_pkg::* ;
+  import clicintv_reg_pkg::* ;
 
   localparam int DW = 32;
   localparam int DBW = DW/8;                    // Byte Width
@@ -67,148 +67,46 @@ module mclic_reg_top #(
   // Define SW related signals
   // Format: <reg>_<field>_{wd|we|qs}
   //        or <reg>_{wd|we|qs} if field == 1 or 0
-  logic [3:0] mcliccfg_mnlbits_qs;
-  logic [3:0] mcliccfg_mnlbits_wd;
-  logic mcliccfg_mnlbits_we;
-  logic [1:0] mcliccfg_nmbits_qs;
-  logic [1:0] mcliccfg_nmbits_wd;
-  logic mcliccfg_nmbits_we;
-  logic [3:0] mcliccfg_snlbits_qs;
-  logic [3:0] mcliccfg_snlbits_wd;
-  logic mcliccfg_snlbits_we;
-  logic [3:0] mcliccfg_unlbits_qs;
-  logic [3:0] mcliccfg_unlbits_wd;
-  logic mcliccfg_unlbits_we;
-  logic [3:0] mcliccfg_reserved_qs;
-  logic clicmnxticonf_qs;
-  logic clicmnxticonf_wd;
-  logic clicmnxticonf_we;
+  logic clicintv_v0_qs;
+  logic clicintv_v0_wd;
+  logic clicintv_v0_we;
+  logic [5:0] clicintv_vsid0_qs;
+  logic [5:0] clicintv_vsid0_wd;
+  logic clicintv_vsid0_we;
+  logic clicintv_v1_qs;
+  logic clicintv_v1_wd;
+  logic clicintv_v1_we;
+  logic [5:0] clicintv_vsid1_qs;
+  logic [5:0] clicintv_vsid1_wd;
+  logic clicintv_vsid1_we;
+  logic clicintv_v2_qs;
+  logic clicintv_v2_wd;
+  logic clicintv_v2_we;
+  logic [5:0] clicintv_vsid2_qs;
+  logic [5:0] clicintv_vsid2_wd;
+  logic clicintv_vsid2_we;
+  logic clicintv_v3_qs;
+  logic clicintv_v3_wd;
+  logic clicintv_v3_we;
+  logic [5:0] clicintv_vsid3_qs;
+  logic [5:0] clicintv_vsid3_wd;
+  logic clicintv_vsid3_we;
 
   // Register instances
-  // R[mcliccfg]: V(False)
+  // R[clicintv]: V(False)
 
-  //   F[mnlbits]: 3:0
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RW"),
-    .RESVAL  (4'h0)
-  ) u_mcliccfg_mnlbits (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (mcliccfg_mnlbits_we),
-    .wd     (mcliccfg_mnlbits_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.mcliccfg.mnlbits.q ),
-
-    // to register interface (read)
-    .qs     (mcliccfg_mnlbits_qs)
-  );
-
-
-  //   F[nmbits]: 5:4
-  prim_subreg #(
-    .DW      (2),
-    .SWACCESS("RW"),
-    .RESVAL  (2'h0)
-  ) u_mcliccfg_nmbits (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (mcliccfg_nmbits_we),
-    .wd     (mcliccfg_nmbits_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.mcliccfg.nmbits.q ),
-
-    // to register interface (read)
-    .qs     (mcliccfg_nmbits_qs)
-  );
-
-
-  //   F[snlbits]: 19:16
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RW"),
-    .RESVAL  (4'h0)
-  ) u_mcliccfg_snlbits (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (mcliccfg_snlbits_we),
-    .wd     (mcliccfg_snlbits_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.mcliccfg.snlbits.q ),
-
-    // to register interface (read)
-    .qs     (mcliccfg_snlbits_qs)
-  );
-
-
-  //   F[unlbits]: 27:24
-  prim_subreg #(
-    .DW      (4),
-    .SWACCESS("RW"),
-    .RESVAL  (4'h0)
-  ) u_mcliccfg_unlbits (
-    .clk_i   (clk_i    ),
-    .rst_ni  (rst_ni  ),
-
-    // from register interface
-    .we     (mcliccfg_unlbits_we),
-    .wd     (mcliccfg_unlbits_wd),
-
-    // from internal hardware
-    .de     (1'b0),
-    .d      ('0  ),
-
-    // to internal hardware
-    .qe     (),
-    .q      (reg2hw.mcliccfg.unlbits.q ),
-
-    // to register interface (read)
-    .qs     (mcliccfg_unlbits_qs)
-  );
-
-
-  //   F[reserved]: 31:28
-  // constant-only read
-  assign mcliccfg_reserved_qs = 4'h0;
-
-
-  // R[clicmnxticonf]: V(False)
-
+  //   F[v0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SWACCESS("RW"),
     .RESVAL  (1'h0)
-  ) u_clicmnxticonf (
+  ) u_clicintv_v0 (
     .clk_i   (clk_i    ),
     .rst_ni  (rst_ni  ),
 
     // from register interface
-    .we     (clicmnxticonf_we),
-    .wd     (clicmnxticonf_wd),
+    .we     (clicintv_v0_we),
+    .wd     (clicintv_v0_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -216,20 +114,201 @@ module mclic_reg_top #(
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.clicmnxticonf.q ),
+    .q      (reg2hw.clicintv.v0.q ),
 
     // to register interface (read)
-    .qs     (clicmnxticonf_qs)
+    .qs     (clicintv_v0_qs)
+  );
+
+
+  //   F[vsid0]: 7:2
+  prim_subreg #(
+    .DW      (6),
+    .SWACCESS("RW"),
+    .RESVAL  (6'h0)
+  ) u_clicintv_vsid0 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_vsid0_we),
+    .wd     (clicintv_vsid0_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.vsid0.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_vsid0_qs)
+  );
+
+
+  //   F[v1]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_clicintv_v1 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_v1_we),
+    .wd     (clicintv_v1_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.v1.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_v1_qs)
+  );
+
+
+  //   F[vsid1]: 15:10
+  prim_subreg #(
+    .DW      (6),
+    .SWACCESS("RW"),
+    .RESVAL  (6'h0)
+  ) u_clicintv_vsid1 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_vsid1_we),
+    .wd     (clicintv_vsid1_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.vsid1.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_vsid1_qs)
+  );
+
+
+  //   F[v2]: 16:16
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_clicintv_v2 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_v2_we),
+    .wd     (clicintv_v2_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.v2.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_v2_qs)
+  );
+
+
+  //   F[vsid2]: 23:18
+  prim_subreg #(
+    .DW      (6),
+    .SWACCESS("RW"),
+    .RESVAL  (6'h0)
+  ) u_clicintv_vsid2 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_vsid2_we),
+    .wd     (clicintv_vsid2_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.vsid2.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_vsid2_qs)
+  );
+
+
+  //   F[v3]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_clicintv_v3 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_v3_we),
+    .wd     (clicintv_v3_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.v3.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_v3_qs)
+  );
+
+
+  //   F[vsid3]: 31:26
+  prim_subreg #(
+    .DW      (6),
+    .SWACCESS("RW"),
+    .RESVAL  (6'h0)
+  ) u_clicintv_vsid3 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicintv_vsid3_we),
+    .wd     (clicintv_vsid3_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicintv.vsid3.q ),
+
+    // to register interface (read)
+    .qs     (clicintv_vsid3_qs)
   );
 
 
 
 
-  logic [1:0] addr_hit;
+  logic [0:0] addr_hit;
   always_comb begin
     addr_hit = '0;
-    addr_hit[0] = (reg_addr == MCLIC_MCLICCFG_OFFSET);
-    addr_hit[1] = (reg_addr == MCLIC_CLICMNXTICONF_OFFSET);
+    addr_hit[0] = (reg_addr == CLICINTV_CLICINTV_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -237,39 +316,46 @@ module mclic_reg_top #(
   // Check sub-word write is permitted
   always_comb begin
     wr_err = (reg_we &
-              ((addr_hit[0] & (|(MCLIC_PERMIT[0] & ~reg_be))) |
-               (addr_hit[1] & (|(MCLIC_PERMIT[1] & ~reg_be)))));
+              ((addr_hit[0] & (|(CLICINTV_PERMIT[0] & ~reg_be)))));
   end
 
-  assign mcliccfg_mnlbits_we = addr_hit[0] & reg_we & !reg_error;
-  assign mcliccfg_mnlbits_wd = reg_wdata[3:0];
+  assign clicintv_v0_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_v0_wd = reg_wdata[0];
 
-  assign mcliccfg_nmbits_we = addr_hit[0] & reg_we & !reg_error;
-  assign mcliccfg_nmbits_wd = reg_wdata[5:4];
+  assign clicintv_vsid0_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_vsid0_wd = reg_wdata[7:2];
 
-  assign mcliccfg_snlbits_we = addr_hit[0] & reg_we & !reg_error;
-  assign mcliccfg_snlbits_wd = reg_wdata[19:16];
+  assign clicintv_v1_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_v1_wd = reg_wdata[8];
 
-  assign mcliccfg_unlbits_we = addr_hit[0] & reg_we & !reg_error;
-  assign mcliccfg_unlbits_wd = reg_wdata[27:24];
+  assign clicintv_vsid1_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_vsid1_wd = reg_wdata[15:10];
 
-  assign clicmnxticonf_we = addr_hit[1] & reg_we & !reg_error;
-  assign clicmnxticonf_wd = reg_wdata[0];
+  assign clicintv_v2_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_v2_wd = reg_wdata[16];
+
+  assign clicintv_vsid2_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_vsid2_wd = reg_wdata[23:18];
+
+  assign clicintv_v3_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_v3_wd = reg_wdata[24];
+
+  assign clicintv_vsid3_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicintv_vsid3_wd = reg_wdata[31:26];
 
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
     unique case (1'b1)
       addr_hit[0]: begin
-        reg_rdata_next[3:0] = mcliccfg_mnlbits_qs;
-        reg_rdata_next[5:4] = mcliccfg_nmbits_qs;
-        reg_rdata_next[19:16] = mcliccfg_snlbits_qs;
-        reg_rdata_next[27:24] = mcliccfg_unlbits_qs;
-        reg_rdata_next[31:28] = mcliccfg_reserved_qs;
-      end
-
-      addr_hit[1]: begin
-        reg_rdata_next[0] = clicmnxticonf_qs;
+        reg_rdata_next[0] = clicintv_v0_qs;
+        reg_rdata_next[7:2] = clicintv_vsid0_qs;
+        reg_rdata_next[8] = clicintv_v1_qs;
+        reg_rdata_next[15:10] = clicintv_vsid1_qs;
+        reg_rdata_next[16] = clicintv_v2_qs;
+        reg_rdata_next[23:18] = clicintv_vsid2_qs;
+        reg_rdata_next[24] = clicintv_v3_qs;
+        reg_rdata_next[31:26] = clicintv_vsid3_qs;
       end
 
       default: begin
@@ -292,16 +378,16 @@ module mclic_reg_top #(
 
 endmodule
 
-module mclic_reg_top_intf
+module clicintv_reg_top_intf
 #(
-  parameter int AW = 3,
+  parameter int AW = 2,
   localparam int DW = 32
 ) (
   input logic clk_i,
   input logic rst_ni,
   REG_BUS.in  regbus_slave,
   // To HW
-  output mclic_reg_pkg::mclic_reg2hw_t reg2hw, // Write
+  output clicintv_reg_pkg::clicintv_reg2hw_t reg2hw, // Write
   // Config
   input devmode_i // If 1, explicit error return for unmapped register access
 );
@@ -325,7 +411,7 @@ module mclic_reg_top_intf
 
   
 
-  mclic_reg_top #(
+  clicintv_reg_top #(
     .reg_req_t(reg_bus_req_t),
     .reg_rsp_t(reg_bus_rsp_t),
     .AW(AW)

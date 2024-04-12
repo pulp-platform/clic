@@ -10,9 +10,9 @@
 
 // SPDX-License-Identifier: Apache-2.0
 
-# CLIC m-mode registers
+// CLIC virtual supervisor configuration register
 {
-  name: "MCLIC",
+  name: "CLICVS",
   clock_primary: "clk_i",
   bus_interfaces: [
     { protocol: "reg_iface", direction: "device" }
@@ -20,28 +20,16 @@
 
   regwidth: "32",
   registers: [
-    { name: "MCLICCFG",
-      desc: "CLIC configuration",
+    { name: "vsprio",
+      desc: "CLIC virtual supervisor priority",
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
-        { bits: "31:28", name: "reserved", desc: "reserved", swaccess: "ro", hwaccess: "none" },  # workaround for full 32-bit access
-        { bits: "27:24", name: "unlbits", desc: "number of privilege mode bits in user mode" },
-        //{ bits: "23:20", name: "reserved" },
-        { bits: "19:16", name: "snlbits", desc: "number of privilege mode bits in supervisor mode" },
-        //{ bits: "15:6", name: "reserved" },
-        { bits: "5:4", name: "nmbits", desc: "number of privilege mode bits" },
-        { bits: "3:0", name: "mnlbits", desc: "number of interrupt level bits in machine mode" },
+        { bits: "24", name: "prio3", desc: "VS3 priority" },
+        { bits: "16", name: "prio2", desc: "VS2 priority" },
+        { bits:  "8", name: "prio1", desc: "VS1 priority" },
+        { bits:  "0", name: "prio0", desc: "VS0 priority" },
       ],
-    },
-    { name: "CLICMNXTICONF",
-      desc: "CLIC enable mnxti irq forwarding logic",
-      swaccess: "rw",
-      hwaccess: "hro",
-      fields: [
-        { bits: "0" }
-      ],
-    },
+    }
   ]
 }
-
