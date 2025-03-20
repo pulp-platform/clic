@@ -29,8 +29,8 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; impo
   input  clicint_reg_pkg::clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw,
   output clicint_reg_pkg::clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg,
 
-  input  clicintv_reg_pkg::clicintv_reg2hw_t [(N_SOURCE/4)-1:0] clicintv_reg2hw,
-  // output clicintv_reg_pkg::clicintv_hw2reg_t [(N_SOURCE/4)-1:0] clicintv_hw2reg,
+  input  clicintv_reg_pkg::clicintv_reg2hw_t [ceildiv(N_SOURCE, 4)-1:0] clicintv_reg2hw,
+  // output clicintv_reg_pkg::clicintv_hw2reg_t [ceildiv(N_SOURCE, 4)-1:0] clicintv_hw2reg,
 
   input  clicvs_reg_pkg::clicvs_reg2hw_t [(MAX_VSCTXTS/4)-1:0] clicvs_reg2hw,
   // output clicvs_reg_pkg::clicvs_hw2reg_t [(MAX_VSCTXTS/4)-1:0] clicvs_hw2reg,
@@ -62,7 +62,7 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; impo
     assign le_o[i] = clicint_reg2hw[i].clicint.attr_trig.q[0];
   end
 
-  for (genvar i = 0; i < N_SOURCE; i = i + 4) begin : gen_reghw_v
+  for (genvar i = 0; i < rounddown(N_SOURCE, 4); i = i + 4) begin : gen_reghw_v
     assign vsid_o[i+0] = clicintv_reg2hw[i/4].clicintv.vsid0.q;
     assign intv_o[i+0] = clicintv_reg2hw[i/4].clicintv.v0.q;
     assign vsid_o[i+1] = clicintv_reg2hw[i/4].clicintv.vsid1.q;
@@ -71,6 +71,23 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; impo
     assign intv_o[i+2] = clicintv_reg2hw[i/4].clicintv.v2.q;
     assign vsid_o[i+3] = clicintv_reg2hw[i/4].clicintv.vsid3.q;
     assign intv_o[i+3] = clicintv_reg2hw[i/4].clicintv.v3.q;
+  end
+
+  localparam int unsigned N_SOURCE_ALIGNED = rounddown(N_SOURCE, 4);
+  
+  if ((N_SOURCE%4) > 0) begin
+    assign vsid_o[N_SOURCE_ALIGNED+0] = clicintv_reg2hw[N_SOURCE/4].clicintv.vsid0.q;
+    assign intv_o[N_SOURCE_ALIGNED+0] = clicintv_reg2hw[N_SOURCE/4].clicintv.v0.q;
+  end
+  
+  if ((N_SOURCE%4) > 1) begin
+    assign vsid_o[N_SOURCE_ALIGNED+1] = clicintv_reg2hw[N_SOURCE/4].clicintv.vsid1.q;
+    assign intv_o[N_SOURCE_ALIGNED+1] = clicintv_reg2hw[N_SOURCE/4].clicintv.v1.q;
+  end
+  
+  if ((N_SOURCE%4) > 2) begin
+    assign vsid_o[N_SOURCE_ALIGNED+2] = clicintv_reg2hw[N_SOURCE/4].clicintv.vsid2.q;
+    assign intv_o[N_SOURCE_ALIGNED+2] = clicintv_reg2hw[N_SOURCE/4].clicintv.v2.q;
   end
 
   for (genvar i = 0; i < MAX_VSCTXTS; i = i + 4) begin : gen_reghw_vs

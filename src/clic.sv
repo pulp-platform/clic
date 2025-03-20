@@ -121,8 +121,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw;
   clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg;
 
-  clicintv_reg2hw_t [(N_SOURCE/4)-1:0] clicintv_reg2hw;
-  // clicintv_hw2reg_t [(N_SOURCE/4)-1:0] clicintv_hw2reg; // Not needed
+  clicintv_reg2hw_t [ceildiv(N_SOURCE, 4)-1:0] clicintv_reg2hw;
+  // clicintv_hw2reg_t [ceildiv(N_SOURCE, 4)-1:0] clicintv_hw2reg; // Not needed
 
   clicvs_reg2hw_t [(MAX_VSCTXTS/4)-1:0] clicvs_reg2hw;
   // clicvs_hw2reg_t [(MAX_VSCTXTS/4)-1:0] clicvs_hw2reg; // Not needed
@@ -265,8 +265,8 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
   reg_rsp_t reg_all_v_rsp;
   logic [ADDR_W-1:0] v_addr;
 
-  reg_req_t [(N_SOURCE/4)-1:0] reg_v_req;
-  reg_rsp_t [(N_SOURCE/4)-1:0] reg_v_rsp;
+  reg_req_t [ceildiv(N_SOURCE, 4)-1:0] reg_v_req;
+  reg_rsp_t [ceildiv(N_SOURCE, 4)-1:0] reg_v_rsp;
 
   // VSPRIO register interface signals
   reg_req_t reg_all_vs_req;
@@ -288,7 +288,7 @@ module clic import mclic_reg_pkg::*; import clicint_reg_pkg::*; import clicintv_
       reg_all_v_rsp = reg_v_rsp[v_addr];
     end
 
-    for (genvar i = 0; i < (N_SOURCE/4); i++) begin : gen_clic_intv
+    for (genvar i = 0; i < ceildiv(N_SOURCE, 4); i++) begin : gen_clic_intv
       clicintv_reg_top #(
         .reg_req_t (reg_req_t),
         .reg_rsp_t (reg_rsp_t)

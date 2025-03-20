@@ -58,5 +58,13 @@ package clicintv_reg_pkg;
     4'b 1111  // index[0] CLICINTV_CLICINTV
   };
 
+  function automatic int unsigned ceildiv(int unsigned dividend, int unsigned divisor);
+    return (dividend + divisor - 1) / divisor;
+  endfunction
+
+  function automatic int unsigned rounddown(int unsigned value, int unsigned alignment);
+    return (value / alignment) * alignment;
+  endfunction
+
 endpackage
 
