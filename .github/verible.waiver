@@ -1,0 +1,13 @@
+# Copyright 2025 ETH Zurich and University of Bologna.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+# Auto-generated configuration registers are waived
+waive --rule=typedef-structs-unions --location="src/clicint_reg*"
+waive --rule=typedef-structs-unions --location="src/mclic_reg*"
+waive --rule=line-length --location="src/clicint_reg*"
+waive --rule=line-length --location="src/mclic_reg*"
+waive --rule=no-trailing-spaces --location="src/clicint_reg*"
+waive --rule=no-trailing-spaces --location="src/mclic_reg*"
+waive --rule=parameter-name-style --location="src/clicint_reg*"
+waive --rule=parameter-name-style --location="src/mclic_reg*"
