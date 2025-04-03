@@ -1,5 +1,5 @@
 // Copyright lowRISC contributors.
-// Copyright 2022 ETH Zurich
+// Copyright 2025 ETH Zurich and University of Bologna.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
