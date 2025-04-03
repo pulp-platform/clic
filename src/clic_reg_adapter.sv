@@ -34,11 +34,9 @@ module clic_reg_adapter
   input  clicint_reg_pkg::clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw,
   output clicint_reg_pkg::clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg,
 
-  input  clicintv_reg_pkg::clicintv_reg2hw_t [ceildiv(N_SOURCE, 4)-1:0] clicintv_reg2hw,
-  // output clicintv_reg_pkg::clicintv_hw2reg_t [ceildiv(N_SOURCE, 4)-1:0] clicintv_hw2reg,
+  input  clicintv_reg_pkg::clicintv_reg2hw_t [ceil_div(N_SOURCE, 4)-1:0] clicintv_reg2hw,
 
   input  clicvs_reg_pkg::clicvs_reg2hw_t [(MAX_VSCTXTS/4)-1:0] clicvs_reg2hw,
-  // output clicvs_reg_pkg::clicvs_hw2reg_t [(MAX_VSCTXTS/4)-1:0] clicvs_hw2reg,
 
   output logic [7:0]              intctl_o  [N_SOURCE],
   output logic [1:0]              intmode_o [N_SOURCE],
