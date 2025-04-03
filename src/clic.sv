@@ -115,10 +115,209 @@ module clic
   localparam logic [ADDR_W-1:0] VSCLICPRIO_START = 'h0e000;
   localparam logic [ADDR_W-1:0] VSCLICPRIO_END   = 'h0efff;
 
-  // VS `i` (1 <= i <= 64) will be mapped to VSCLIC*(i) address space
-  `define VSCLICCFG_START(i)  ('h08000 * (i + 1))
-  `define VSCLICINT_START(i)  ('h08000 * (i + 1) + 'h01000)
-  `define VSCLICINT_END(i)    ('h08000 * (i + 1) + 'h04fff)
+  localparam logic [ADDR_W-1:0] VSCLICCFG_START [MAX_VSCTXTS] = {
+    'h10000 + 'h08000 * 0,
+    'h10000 + 'h08000 * 1,
+    'h10000 + 'h08000 * 2,
+    'h10000 + 'h08000 * 3,
+    'h10000 + 'h08000 * 4,
+    'h10000 + 'h08000 * 5,
+    'h10000 + 'h08000 * 6,
+    'h10000 + 'h08000 * 7,
+    'h10000 + 'h08000 * 8,
+    'h10000 + 'h08000 * 9,
+    'h10000 + 'h08000 * 10,
+    'h10000 + 'h08000 * 11,
+    'h10000 + 'h08000 * 12,
+    'h10000 + 'h08000 * 13,
+    'h10000 + 'h08000 * 14,
+    'h10000 + 'h08000 * 15,
+    'h10000 + 'h08000 * 16,
+    'h10000 + 'h08000 * 17,
+    'h10000 + 'h08000 * 18,
+    'h10000 + 'h08000 * 19,
+    'h10000 + 'h08000 * 20,
+    'h10000 + 'h08000 * 21,
+    'h10000 + 'h08000 * 22,
+    'h10000 + 'h08000 * 23,
+    'h10000 + 'h08000 * 24,
+    'h10000 + 'h08000 * 25,
+    'h10000 + 'h08000 * 26,
+    'h10000 + 'h08000 * 27,
+    'h10000 + 'h08000 * 28,
+    'h10000 + 'h08000 * 29,
+    'h10000 + 'h08000 * 30,
+    'h10000 + 'h08000 * 31,
+    'h10000 + 'h08000 * 32,
+    'h10000 + 'h08000 * 33,
+    'h10000 + 'h08000 * 34,
+    'h10000 + 'h08000 * 35,
+    'h10000 + 'h08000 * 36,
+    'h10000 + 'h08000 * 37,
+    'h10000 + 'h08000 * 38,
+    'h10000 + 'h08000 * 39,
+    'h10000 + 'h08000 * 40,
+    'h10000 + 'h08000 * 41,
+    'h10000 + 'h08000 * 42,
+    'h10000 + 'h08000 * 43,
+    'h10000 + 'h08000 * 44,
+    'h10000 + 'h08000 * 45,
+    'h10000 + 'h08000 * 46,
+    'h10000 + 'h08000 * 47,
+    'h10000 + 'h08000 * 48,
+    'h10000 + 'h08000 * 49,
+    'h10000 + 'h08000 * 50,
+    'h10000 + 'h08000 * 51,
+    'h10000 + 'h08000 * 52,
+    'h10000 + 'h08000 * 53,
+    'h10000 + 'h08000 * 54,
+    'h10000 + 'h08000 * 55,
+    'h10000 + 'h08000 * 56,
+    'h10000 + 'h08000 * 57,
+    'h10000 + 'h08000 * 58,
+    'h10000 + 'h08000 * 59,
+    'h10000 + 'h08000 * 60,
+    'h10000 + 'h08000 * 61,
+    'h10000 + 'h08000 * 62,
+    'h10000 + 'h08000 * 63
+  };
+
+  // Offsets for VSCLICINT address range computation
+  // This unrolled array is necessary to elaborate the design
+  // in some synthesis tools.
+  localparam logic [ADDR_W-1:0] VSCLICINT_START [MAX_VSCTXTS] = {
+    VSCLICCFG_START[0]  + 'h01000,
+    VSCLICCFG_START[1]  + 'h01000,
+    VSCLICCFG_START[2]  + 'h01000,
+    VSCLICCFG_START[3]  + 'h01000,
+    VSCLICCFG_START[4]  + 'h01000,
+    VSCLICCFG_START[5]  + 'h01000,
+    VSCLICCFG_START[6]  + 'h01000,
+    VSCLICCFG_START[7]  + 'h01000,
+    VSCLICCFG_START[8]  + 'h01000,
+    VSCLICCFG_START[9]  + 'h01000,
+    VSCLICCFG_START[10] + 'h01000,
+    VSCLICCFG_START[11] + 'h01000,
+    VSCLICCFG_START[12] + 'h01000,
+    VSCLICCFG_START[13] + 'h01000,
+    VSCLICCFG_START[14] + 'h01000,
+    VSCLICCFG_START[15] + 'h01000,
+    VSCLICCFG_START[16] + 'h01000,
+    VSCLICCFG_START[17] + 'h01000,
+    VSCLICCFG_START[18] + 'h01000,
+    VSCLICCFG_START[19] + 'h01000,
+    VSCLICCFG_START[20] + 'h01000,
+    VSCLICCFG_START[21] + 'h01000,
+    VSCLICCFG_START[22] + 'h01000,
+    VSCLICCFG_START[23] + 'h01000,
+    VSCLICCFG_START[24] + 'h01000,
+    VSCLICCFG_START[25] + 'h01000,
+    VSCLICCFG_START[26] + 'h01000,
+    VSCLICCFG_START[27] + 'h01000,
+    VSCLICCFG_START[28] + 'h01000,
+    VSCLICCFG_START[29] + 'h01000,
+    VSCLICCFG_START[30] + 'h01000,
+    VSCLICCFG_START[31] + 'h01000,
+    VSCLICCFG_START[32] + 'h01000,
+    VSCLICCFG_START[33] + 'h01000,
+    VSCLICCFG_START[34] + 'h01000,
+    VSCLICCFG_START[35] + 'h01000,
+    VSCLICCFG_START[36] + 'h01000,
+    VSCLICCFG_START[37] + 'h01000,
+    VSCLICCFG_START[38] + 'h01000,
+    VSCLICCFG_START[39] + 'h01000,
+    VSCLICCFG_START[40] + 'h01000,
+    VSCLICCFG_START[41] + 'h01000,
+    VSCLICCFG_START[42] + 'h01000,
+    VSCLICCFG_START[43] + 'h01000,
+    VSCLICCFG_START[44] + 'h01000,
+    VSCLICCFG_START[45] + 'h01000,
+    VSCLICCFG_START[46] + 'h01000,
+    VSCLICCFG_START[47] + 'h01000,
+    VSCLICCFG_START[48] + 'h01000,
+    VSCLICCFG_START[49] + 'h01000,
+    VSCLICCFG_START[50] + 'h01000,
+    VSCLICCFG_START[51] + 'h01000,
+    VSCLICCFG_START[52] + 'h01000,
+    VSCLICCFG_START[53] + 'h01000,
+    VSCLICCFG_START[54] + 'h01000,
+    VSCLICCFG_START[55] + 'h01000,
+    VSCLICCFG_START[56] + 'h01000,
+    VSCLICCFG_START[57] + 'h01000,
+    VSCLICCFG_START[58] + 'h01000,
+    VSCLICCFG_START[59] + 'h01000,
+    VSCLICCFG_START[60] + 'h01000,
+    VSCLICCFG_START[61] + 'h01000,
+    VSCLICCFG_START[62] + 'h01000,
+    VSCLICCFG_START[63] + 'h01000
+  };
+
+  localparam logic [ADDR_W-1:0] VSCLICINT_END [MAX_VSCTXTS] = {
+    VSCLICCFG_START[0]  + 'h04fff,
+    VSCLICCFG_START[1]  + 'h04fff,
+    VSCLICCFG_START[2]  + 'h04fff,
+    VSCLICCFG_START[3]  + 'h04fff,
+    VSCLICCFG_START[4]  + 'h04fff,
+    VSCLICCFG_START[5]  + 'h04fff,
+    VSCLICCFG_START[6]  + 'h04fff,
+    VSCLICCFG_START[7]  + 'h04fff,
+    VSCLICCFG_START[8]  + 'h04fff,
+    VSCLICCFG_START[9]  + 'h04fff,
+    VSCLICCFG_START[10] + 'h04fff,
+    VSCLICCFG_START[11] + 'h04fff,
+    VSCLICCFG_START[12] + 'h04fff,
+    VSCLICCFG_START[13] + 'h04fff,
+    VSCLICCFG_START[14] + 'h04fff,
+    VSCLICCFG_START[15] + 'h04fff,
+    VSCLICCFG_START[16] + 'h04fff,
+    VSCLICCFG_START[17] + 'h04fff,
+    VSCLICCFG_START[18] + 'h04fff,
+    VSCLICCFG_START[19] + 'h04fff,
+    VSCLICCFG_START[20] + 'h04fff,
+    VSCLICCFG_START[21] + 'h04fff,
+    VSCLICCFG_START[22] + 'h04fff,
+    VSCLICCFG_START[23] + 'h04fff,
+    VSCLICCFG_START[24] + 'h04fff,
+    VSCLICCFG_START[25] + 'h04fff,
+    VSCLICCFG_START[26] + 'h04fff,
+    VSCLICCFG_START[27] + 'h04fff,
+    VSCLICCFG_START[28] + 'h04fff,
+    VSCLICCFG_START[29] + 'h04fff,
+    VSCLICCFG_START[30] + 'h04fff,
+    VSCLICCFG_START[31] + 'h04fff,
+    VSCLICCFG_START[32] + 'h04fff,
+    VSCLICCFG_START[33] + 'h04fff,
+    VSCLICCFG_START[34] + 'h04fff,
+    VSCLICCFG_START[35] + 'h04fff,
+    VSCLICCFG_START[36] + 'h04fff,
+    VSCLICCFG_START[37] + 'h04fff,
+    VSCLICCFG_START[38] + 'h04fff,
+    VSCLICCFG_START[39] + 'h04fff,
+    VSCLICCFG_START[40] + 'h04fff,
+    VSCLICCFG_START[41] + 'h04fff,
+    VSCLICCFG_START[42] + 'h04fff,
+    VSCLICCFG_START[43] + 'h04fff,
+    VSCLICCFG_START[44] + 'h04fff,
+    VSCLICCFG_START[45] + 'h04fff,
+    VSCLICCFG_START[46] + 'h04fff,
+    VSCLICCFG_START[47] + 'h04fff,
+    VSCLICCFG_START[48] + 'h04fff,
+    VSCLICCFG_START[49] + 'h04fff,
+    VSCLICCFG_START[50] + 'h04fff,
+    VSCLICCFG_START[51] + 'h04fff,
+    VSCLICCFG_START[52] + 'h04fff,
+    VSCLICCFG_START[53] + 'h04fff,
+    VSCLICCFG_START[54] + 'h04fff,
+    VSCLICCFG_START[55] + 'h04fff,
+    VSCLICCFG_START[56] + 'h04fff,
+    VSCLICCFG_START[57] + 'h04fff,
+    VSCLICCFG_START[58] + 'h04fff,
+    VSCLICCFG_START[59] + 'h04fff,
+    VSCLICCFG_START[60] + 'h04fff,
+    VSCLICCFG_START[61] + 'h04fff,
+    VSCLICCFG_START[62] + 'h04fff,
+    VSCLICCFG_START[63] + 'h04fff
+  };
 
   mclic_reg2hw_t mclic_reg2hw;
 
@@ -461,22 +660,22 @@ module clic
 
     // Match VS address space
     if (VSCLIC) begin
-      for (int i = 1; i <= N_VSCTXTS; i++) begin
-        if (reg_req_i.addr[ADDR_W-1:0] == `VSCLICCFG_START(i)) begin
+      for (int i = 0; i < N_VSCTXTS; i++) begin
+        if (reg_req_i.addr[ADDR_W-1:0] == VSCLICCFG_START[i]) begin
             // inaccesible (all zero)
             reg_rsp_o.rdata = '0;
             reg_rsp_o.error = '0;
             reg_rsp_o.ready = 1'b1;
-        end else if (`VSCLICINT_START(i) <= reg_req_i.addr[ADDR_W-1:0] &&
-                     reg_req_i.addr[ADDR_W-1:0] <= `VSCLICINT_END(i)) begin
-          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - `VSCLICINT_START(i);
+        end else if (VSCLICINT_START[i] <= reg_req_i.addr[ADDR_W-1:0] &&
+                     reg_req_i.addr[ADDR_W-1:0] <= VSCLICINT_END[i]) begin
+          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - VSCLICINT_START[i];
           if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) &&
               (intv[addr_tmp[ADDR_W-1:2]])              &&
-              (vsid[addr_tmp[ADDR_W-1:2]] == i)) begin
+              (vsid[addr_tmp[ADDR_W-1:2]] == (i + 1))) begin
             // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
             reg_all_int_req = reg_req_i;
             reg_all_int_req.addr = addr_tmp;
-            // Prevent setting interrupt mode to m-mode . This is currently a
+            // Prevent setting interrupt mode to m-mode. This is currently a
             // bit ugly but will be nicer once we do away with auto generated
             // clicint registers
             reg_all_int_req.wdata[23] = 1'b0;
