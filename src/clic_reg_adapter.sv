@@ -20,6 +20,7 @@ module clic_reg_adapter
   import clicint_reg_pkg::*;
   import clicintv_reg_pkg::*;
   import clicvs_reg_pkg::*;
+  import cf_math_pkg::*;
 #(
   parameter int N_SOURCE = 32,
   parameter int INTCTLBITS = 8,
