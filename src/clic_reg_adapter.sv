@@ -33,7 +33,8 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
   output logic [N_SOURCE-1:0] ie_o,
   output logic [N_SOURCE-1:0] le_o,
 
-  input logic [N_SOURCE-1:0]  ip_i
+  input logic [N_SOURCE-1:0]  ip_i,
+  output logic mnxti_cfg_o
 );
 
   // We only support positive edge triggered and positive level triggered
@@ -49,5 +50,7 @@ module clic_reg_adapter import mclic_reg_pkg::*; import clicint_reg_pkg::*; #(
     assign clicint_hw2reg[i].clicint.ip.d  = ip_i[i];
     assign le_o[i] = clicint_reg2hw[i].clicint.attr_trig.q[0];
   end
+
+  assign mnxti_cfg_o = mclic_reg2hw.clicmnxticonf.q;
 
 endmodule // clic_reg_adapter

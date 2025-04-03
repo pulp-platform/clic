@@ -7,7 +7,7 @@
 package mclic_reg_pkg;
 
   // Address widths within the block
-  parameter int BlockAw = 2;
+  parameter int BlockAw = 3;
 
   ////////////////////////////
   // Typedefs for registers //
@@ -28,22 +28,30 @@ package mclic_reg_pkg;
     } unlbits;
   } mclic_reg2hw_mcliccfg_reg_t;
 
+  typedef struct packed {
+    logic        q;
+  } mclic_reg2hw_clicmnxticonf_reg_t;
+
   // Register -> HW type
   typedef struct packed {
-    mclic_reg2hw_mcliccfg_reg_t mcliccfg; // [13:0]
+    mclic_reg2hw_mcliccfg_reg_t mcliccfg; // [14:1]
+    mclic_reg2hw_clicmnxticonf_reg_t clicmnxticonf; // [0:0]
   } mclic_reg2hw_t;
 
   // Register offsets
-  parameter logic [BlockAw-1:0] MCLIC_MCLICCFG_OFFSET = 2'h 0;
+  parameter logic [BlockAw-1:0] MCLIC_MCLICCFG_OFFSET = 3'h 0;
+  parameter logic [BlockAw-1:0] MCLIC_CLICMNXTICONF_OFFSET = 3'h 4;
 
   // Register index
   typedef enum int {
-    MCLIC_MCLICCFG
+    MCLIC_MCLICCFG,
+    MCLIC_CLICMNXTICONF
   } mclic_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] MCLIC_PERMIT [1] = '{
-    4'b 1111  // index[0] MCLIC_MCLICCFG
+  parameter logic [3:0] MCLIC_PERMIT [2] = '{
+    4'b 1111, // index[0] MCLIC_MCLICCFG
+    4'b 0001  // index[1] MCLIC_CLICMNXTICONF
   };
 
 endpackage
