@@ -17,11 +17,20 @@
 
 # Generate C header and SystemVerilog files
 
-REGTOOL = regtool.py
+REGTOOL ?= regtool.py
+
+SRCS = clicvs_reg_pkg.sv clicvs_reg_top.sv clicintv_reg_pkg.sv clicintv_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv mclic_reg_pkg.sv mclic_reg_top.sv
+HDRS = clic.h clicint.h clicintv.h clicvs.h
 
 all: headers srcs
 
-srcs: clicint_reg_pkg.sv clicint_reg_top.sv mclic_reg_pkg.sv mclic_reg_top.sv
+srcs: $(SRCS)
+
+clicvs_reg_pkg.sv clicvs_reg_top.sv: clicvs.hjson
+	$(REGTOOL) -r $< -t .
+
+clicintv_reg_pkg.sv clicintv_reg_top.sv: clicintv.hjson
+	$(REGTOOL) -r $< -t .
 
 clicint_reg_pkg.sv clicint_reg_top.sv: clicint.hjson
 	$(REGTOOL) -r $< -t .
@@ -29,7 +38,7 @@ clicint_reg_pkg.sv clicint_reg_top.sv: clicint.hjson
 mclic_reg_pkg.sv mclic_reg_top.sv: mclic.hjson
 	$(REGTOOL) -r $< -t .
 
-headers: clic.h clicint.h
+headers: $(HDRS)
 
 clic.h: mclic.hjson
 	$(REGTOOL) --cdefines mclic.hjson > $@
@@ -37,11 +46,17 @@ clic.h: mclic.hjson
 clicint.h: clicint.hjson
 	$(REGTOOL) --cdefines clicint.hjson > $@
 
+clicintv.h: clicintv.hjson
+	$(REGTOOL) --cdefines clicintv.hjson > $@
+
+clicvs.h: clicvs.hjson
+	$(REGTOOL) --cdefines clicvs.hjson > $@
+
 .PHONY: install
 install:
-	cp mclic_reg_pkg.sv mclic_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv ..
+	cp $(SRCS) ..
 
 .PHONY: clean
 clean:
-	rm clic.h mclic_reg_pkg.sv mclic_reg_top.sv clicint_reg_pkg.sv clicint_reg_top.sv
+	rm $(HDRS) $(SRCS)
 
