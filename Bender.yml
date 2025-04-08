@@ -41,3 +41,7 @@ sources:
   - src/clic_apb.sv
   - src/clic.sv
 
+  - target: clic_synth_test
+    files:
+      - src/clic_synth_pkg.sv
+      - src/clic_synth_wrap.sv
