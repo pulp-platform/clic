@@ -20,6 +20,10 @@ clic:
   files:
     - src/clicint_reg_pkg.sv
     - src/clicint_reg_top.sv
+    - src/clicintv_reg_pkg.sv
+    - src/clicintv_reg_top.sv
+    - src/clicvs_reg_pkg.sv
+    - src/clicvs_reg_top.sv
     - src/mclic_reg_pkg.sv
     - src/mclic_reg_top.sv
     - src/clic_reg_adapter.sv
