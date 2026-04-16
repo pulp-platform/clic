@@ -50,6 +50,7 @@ module clic_target
 
   input [PrioWidth-1:0]        prio_i [N_SOURCE],
   input [ModeWidth-1:0]        mode_i [N_SOURCE],
+  input [          1:0]        regs_i [N_SOURCE],
   input logic                  intv_i [N_SOURCE],
   input [VsidWidth-1:0]        vsid_i [N_SOURCE],
 
@@ -62,6 +63,7 @@ module clic_target
   output logic [SrcWidth-1:0]  irq_id_o,
   output logic [PrioWidth-1:0] irq_max_o,
   output logic [ModeWidth-1:0] irq_mode_o,
+  output logic [          1:0] irq_regs_o,
   output logic [VsidWidth-1:0] irq_vsid_o,
   output logic                 irq_v_o,
   output logic                 irq_shv_o,
@@ -172,6 +174,7 @@ module clic_target
   prio_t                irq_max_d, irq_max_q;
   logic [VsidWidth-1:0] vsid_max_d, vsid_max_q;
   logic                 shv_max_d, shv_max_q;
+  logic [1:0]           regs_max_d, regs_max_q;
 
   // the results can be found at the tree root
   // TODO: remove useless inequality comparison
@@ -194,6 +197,7 @@ module clic_target
     irq_max_d = '0;
     vsid_max_d = '0;
     shv_max_d = '0;
+    regs_max_d = '0;
     claim_o = '0;
 
     irq_valid_d = 1'b0;
@@ -209,6 +213,7 @@ module clic_target
           irq_max_d = max_tree[0];
           vsid_max_d = vsid_i[irq_root_id];
           shv_max_d = shv_i[irq_root_id];
+          regs_max_d = regs_i[irq_root_id];
           irq_valid_d = 1'b1;
           irq_state_d = ACK;
         end
@@ -219,6 +224,7 @@ module clic_target
         irq_max_d   = irq_max_q;
         vsid_max_d  = vsid_max_q;
         shv_max_d   = shv_max_q;
+        regs_max_d  = regs_max_q;
         // level sensitive interrupts (le_i == 1'b0) can be cleared (ip_i goes
         // to 1'b0) and shouldn't fire anymore so we should get unstuck here
         if (!le_i[irq_id_q] && !ip_i[irq_id_q]) begin
@@ -258,6 +264,7 @@ module clic_target
       irq_max_q <= '0;
       vsid_max_q <= '0;
       shv_max_q <= '0;
+      regs_max_q <= '0;
       irq_kill_req_q <= 1'b0;
       irq_state_q <= IDLE;
     end else begin
@@ -266,6 +273,7 @@ module clic_target
       irq_max_q <= irq_max_d;
       vsid_max_q <= vsid_max_d;
       shv_max_q <= shv_max_d;
+      regs_max_q <= regs_max_d;
       irq_kill_req_q <= irq_kill_req_d;
       irq_state_q <= irq_state_d;
     end
@@ -280,6 +288,7 @@ module clic_target
   assign irq_vsid_o = vsid_max_q;
   assign irq_v_o    = logic'(irq_max_q.mode == S_MODE);
   assign irq_shv_o  = shv_max_q;
+  assign irq_regs_o = regs_max_q;
 
   assign irq_kill_req_o = irq_kill_req_q;
 
