@@ -27,7 +27,7 @@
       fields: [
         { bits: "31:24", name: "CTL", desc: "interrupt control for interrupt" },
         { bits: "23:22", name: "ATTR_MODE", desc: "privilege mode of this interrupt", resval: 3},
-        //{ bits: "21:19", name: "reserved" },
+        { bits: "21:19", name: "ATTR_RSTK", desc: "determines which registers should be automatically pushed on stack", resval: 0 },
         { bits: "18:17", name: "ATTR_TRIG", desc: "specify trigger type for this interrupt" },
         { bits: "16", name: "ATTR_SHV", desc: "enable hardware vectoring for this interrupt" },
 

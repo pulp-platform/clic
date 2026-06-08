@@ -27,6 +27,9 @@ package clicint_reg_pkg;
       logic [1:0]  q;
     } attr_trig;
     struct packed {
+      logic [2:0]  q;
+    } attr_rstk;
+    struct packed {
       logic [1:0]  q;
     } attr_mode;
     struct packed {
@@ -43,7 +46,7 @@ package clicint_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    clicint_reg2hw_clicint_reg_t clicint; // [14:0]
+    clicint_reg2hw_clicint_reg_t clicint; // [17:0]
   } clicint_reg2hw_t;
 
   // HW -> register type

@@ -60,6 +60,7 @@ module clic
   output logic [7:0]        irq_level_o,
   output logic              irq_shv_o,
   output logic [1:0]        irq_priv_o,
+  output logic [1:0]        irq_rstk_o,
   output logic [VSID_W-1:0] irq_vsid_o,
   output logic              irq_v_o,
   output logic              irq_kill_req_o,
@@ -336,6 +337,8 @@ module clic
   logic [1:0] intmode [N_SOURCE];
   logic [1:0] irq_mode;
 
+  logic [1:0] intrstk [N_SOURCE];
+
   logic [VSID_W-1:0] vsid [N_SOURCE]; // Per-IRQ Virtual Supervisor (VS) ID
   logic              intv [N_SOURCE]; // Per-IRQ virtualization bit
 
@@ -383,6 +386,7 @@ module clic
 
     .prio_i      (intctl),
     .mode_i      (intmode),
+    .rstk_i      (intrstk),
     .intv_i      (intv),
     .vsid_i      (vsid),
 
@@ -395,6 +399,7 @@ module clic
     .irq_id_o,
     .irq_max_o   (irq_max),
     .irq_mode_o  (irq_mode),
+    .irq_rstk_o,
     .irq_v_o,
     .irq_vsid_o,
     .irq_shv_o,
@@ -714,6 +719,7 @@ module clic
 
     .intctl_o  (intctl),
     .intmode_o (intmode),
+    .intrstk_o (intrstk),
     .shv_o     (shv),
     .vsid_o    (vsid),
     .intv_o    (intv),

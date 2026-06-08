@@ -41,6 +41,7 @@ module clic_reg_adapter
 
   output logic [7:0]              intctl_o  [N_SOURCE],
   output logic [1:0]              intmode_o [N_SOURCE],
+  output logic [1:0]              intrstk_o [N_SOURCE],
   output logic [VsidWidth-1:0]    vsid_o    [N_SOURCE], // interrupt VS id
   output logic                    intv_o    [N_SOURCE], // interrupt virtualization
   output logic [VsprioWidth-1:0]  vsprio_o  [MAX_VSCTXTS], // VS priority
@@ -60,6 +61,7 @@ module clic_reg_adapter
   for (genvar i = 0; i < N_SOURCE; i++) begin : gen_reghw
     assign intctl_o[i] = clicint_reg2hw[i].clicint.ctl.q;
     assign intmode_o[i] = clicint_reg2hw[i].clicint.attr_mode.q;
+    assign intrstk_o[i] = clicint_reg2hw[i].clicint.attr_rstk.q;
     assign shv_o[i] = clicint_reg2hw[i].clicint.attr_shv.q;
     assign ip_sw_o[i] = clicint_reg2hw[i].clicint.ip.q;
     assign ie_o[i] = clicint_reg2hw[i].clicint.ie.q;
