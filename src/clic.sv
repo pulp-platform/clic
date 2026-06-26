@@ -23,7 +23,7 @@ module clic
   import clicint_reg_pkg::*;
   import clicintv_reg_pkg::*;
   import clicvs_reg_pkg::*;
-  import cf_math_pkg::*;
+  import cc_pkg::*;
 #(
   parameter type reg_req_t = logic,
   parameter type reg_rsp_t = logic,
