@@ -80,6 +80,9 @@ module clicint_reg_top #(
   logic [1:0] clicint_attr_trig_qs;
   logic [1:0] clicint_attr_trig_wd;
   logic clicint_attr_trig_we;
+  logic [2:0] clicint_attr_rstk_qs;
+  logic [2:0] clicint_attr_rstk_wd;
+  logic clicint_attr_rstk_we;
   logic [1:0] clicint_attr_mode_qs;
   logic [1:0] clicint_attr_mode_wd;
   logic clicint_attr_mode_we;
@@ -194,6 +197,32 @@ module clicint_reg_top #(
   );
 
 
+  //   F[attr_rstk]: 21:19
+  prim_subreg #(
+    .DW      (3),
+    .SWACCESS("RW"),
+    .RESVAL  (3'h0)
+  ) u_clicint_attr_rstk (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (clicint_attr_rstk_we),
+    .wd     (clicint_attr_rstk_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.clicint.attr_rstk.q ),
+
+    // to register interface (read)
+    .qs     (clicint_attr_rstk_qs)
+  );
+
+
   //   F[attr_mode]: 23:22
   prim_subreg #(
     .DW      (2),
@@ -274,6 +303,9 @@ module clicint_reg_top #(
   assign clicint_attr_trig_we = addr_hit[0] & reg_we & !reg_error;
   assign clicint_attr_trig_wd = reg_wdata[18:17];
 
+  assign clicint_attr_rstk_we = addr_hit[0] & reg_we & !reg_error;
+  assign clicint_attr_rstk_wd = reg_wdata[21:19];
+
   assign clicint_attr_mode_we = addr_hit[0] & reg_we & !reg_error;
   assign clicint_attr_mode_wd = reg_wdata[23:22];
 
@@ -289,6 +321,7 @@ module clicint_reg_top #(
         reg_rdata_next[8] = clicint_ie_qs;
         reg_rdata_next[16] = clicint_attr_shv_qs;
         reg_rdata_next[18:17] = clicint_attr_trig_qs;
+        reg_rdata_next[21:19] = clicint_attr_rstk_qs;
         reg_rdata_next[23:22] = clicint_attr_mode_qs;
         reg_rdata_next[31:24] = clicint_ctl_qs;
       end
