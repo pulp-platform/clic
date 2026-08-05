@@ -1,5 +1,5 @@
 // Copyright lowRISC contributors.
-// Copyright 2025 ETH Zurich and University of Bologna.
+// Copyright 2026 ETH Zurich and University of Bologna.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,14 +19,12 @@
 
 module clic
   import clic_pkg::*;
-  import mclic_reg_pkg::*;
+  import cliccfg_reg_pkg::*;
   import clicint_reg_pkg::*;
   import clicintv_reg_pkg::*;
   import clicvs_reg_pkg::*;
   import cf_math_pkg::*;
 #(
-  parameter type reg_req_t = logic,
-  parameter type reg_rsp_t = logic,
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
   parameter bit  SSCLIC = 0,
@@ -40,15 +38,19 @@ module clic
   parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
   parameter int  VSPRIO_W = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
 
+  // APB4 request and response types
+  parameter type apb_req_t = logic,
+  parameter type apb_rsp_t = logic,
+
   // do not edit below, these are derived
   localparam int SRC_W = $clog2(N_SOURCE)
 )(
   input logic        clk_i,
   input logic        rst_ni,
 
-  // Bus Interface (device)
-  input reg_req_t    reg_req_i,
-  output reg_rsp_t   reg_rsp_o,
+  // Bus Interface (APB4 device)
+  input  apb_req_t   apb_req_i,
+  output apb_rsp_t   apb_rsp_o,
 
   // Interrupt Sources
   input [N_SOURCE-1:0] intr_src_i,
@@ -83,6 +85,9 @@ module clic
   localparam logic [1:0] S_MODE = 2'b01;
   localparam logic [1:0] M_MODE = 2'b11;
 
+  localparam int unsigned N_INTV = ceil_div(N_SOURCE, 4);
+  localparam int unsigned N_VS   = MAX_VSCTXTS / 4;
+
   ///////////////////////////////////////////////////
   //            CLIC internal addressing           //
   ///////////////////////////////////////////////////
@@ -101,6 +106,13 @@ module clic
 
   // Some value between 16 (VSCLIC = 0) and 22 (64 VS contexts)
   localparam int unsigned ADDR_W = $clog2((N_VSCTXTS + 2) * 32 * 1024);
+
+  // A wider APB address bus is fine, the extra bits are simply never decoded,
+  // but a narrower one would silently drop part of the window offset.
+  if ($bits(apb_req_i.paddr) < ADDR_W)
+    $fatal(1, "apb_req_t address field is too narrow for the configured number of VS contexts");
+  if ($bits(apb_req_i.pwdata) != 32)
+    $fatal(1, "the CLIC is a 32-bit register block; apb_req_t must have 32-bit pwdata");
 
   // Each privilege mode address space is aligned to a 32KiB physical memory region
   localparam logic [ADDR_W-1:0] MCLICCFG_START  = 'h00000;
@@ -320,15 +332,15 @@ module clic
     VSCLICCFG_START[63] + 'h04fff
   };
 
-  mclic_reg2hw_t mclic_reg2hw;
+  // Hardware interfaces of the generated register blocks
+  cliccfg_reg_pkg::cliccfg__out_t cliccfg_hwif_out;
 
-  clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw;
-  clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg;
+  clicint_reg_pkg::clicint__in_t  clicint_hwif_in  [N_SOURCE];
+  clicint_reg_pkg::clicint__out_t clicint_hwif_out [N_SOURCE];
 
-  clicintv_reg2hw_t [ceil_div(N_SOURCE, 4)-1:0] clicintv_reg2hw;
+  clicintv_reg_pkg::clicintv__out_t clicintv_hwif_out [N_INTV];
 
-  clicvs_reg2hw_t [(MAX_VSCTXTS/4)-1:0] clicvs_reg2hw;
-
+  clicvs_reg_pkg::clicvs__out_t clicvs_hwif_out [N_VS];
 
   logic [7:0] intctl [N_SOURCE];
   logic [7:0] irq_max;
@@ -348,6 +360,25 @@ module clic
   logic [N_SOURCE-1:0] shv; // Handle per-irq SHV bits
 
   logic [N_SOURCE-1:0] claim;
+
+  // Unpacked once here so the decoder below can keep working on flat signals.
+  logic        psel, penable, pwrite;
+  logic [2:0]  pprot;
+  logic [31:0] pwdata;
+  logic [3:0]  pstrb;
+  logic        pready, pslverr;
+  logic [31:0] prdata;
+
+  assign psel    = apb_req_i.psel;
+  assign penable = apb_req_i.penable;
+  assign pwrite  = apb_req_i.pwrite;
+  assign pprot   = apb_req_i.pprot;
+  assign pwdata  = apb_req_i.pwdata;
+  assign pstrb   = apb_req_i.pstrb;
+
+  assign apb_rsp_o.pready  = pready;
+  assign apb_rsp_o.prdata  = prdata;
+  assign apb_rsp_o.pslverr = pslverr;
 
   // handle incoming interrupts
   clic_gateway #(
@@ -403,311 +434,408 @@ module clic
     .irq_kill_ack_i
   );
 
-  // configuration registers
-  // 0x0000 (machine mode)
-  reg_req_t reg_mclic_req;
-  reg_rsp_t reg_mclic_rsp;
+  ///////////////////////////////////////////////////
+  //                 Bus fan-out                   //
+  ///////////////////////////////////////////////////
+  //
+  // Every generated block is a leaf holding a single 32-bit register, so all of
+  // them share one APB channel and are distinguished only by their select line.
+  // The decoder below drives at most one select at a time and picks the
+  // matching response.
+  //
+  // Two things are rewritten on the way down rather than being expressed in the
+  // register description, because SystemRDL has no notion of which address
+  // window an access arrived through:
+  //   - CLICINT bit 23 is forced low outside the M-mode window, so a line
+  //     cannot be promoted to M-mode from a less privileged window.
+  //   - CLICINTV lanes belonging to a line above S-mode are zeroed on write and
+  //     read back as zero.
+  //
+  // The permission inputs (intmode, intv, vsid) are software-writable only and
+  // there is a single bus port, so they cannot change underneath a transfer
+  // that is already in progress.
 
-  mclic_reg_top #(
-    .reg_req_t (reg_req_t),
-    .reg_rsp_t (reg_rsp_t)
-  ) i_mclic_reg_top (
-    .clk_i,
-    .rst_ni,
+  // Leaves only ever see the two byte-offset bits; the register index is
+  // resolved here into a one-hot select.
+  logic [2:0] leaf_paddr;
+  assign leaf_paddr = {1'b0, apb_req_i.paddr[1:0]};
 
-    .reg_req_i (reg_mclic_req),
-    .reg_rsp_o (reg_mclic_rsp),
+  // cliccfg
+  logic        cliccfg_psel;
+  logic [31:0] cliccfg_prdata;
+  logic        cliccfg_pready, cliccfg_pslverr;
 
-    .reg2hw (mclic_reg2hw),
+  // clicint
+  logic                        int_psel;
+  logic [ADDR_W-1:0]           int_idx;
+  logic                        int_idx_ok;
+  logic [31:0]                 int_pwdata;
+  logic [N_SOURCE-1:0]         int_psel_oh;
+  logic [N_SOURCE-1:0][31:0]   int_prdata;
+  logic [N_SOURCE-1:0]         int_pready;
+  logic [N_SOURCE-1:0]         int_pslverr;
+  logic [31:0]                 int_sel_prdata;
+  logic                        int_sel_pready, int_sel_pslverr;
 
-    .devmode_i  (1'b1)
+  // clicintv
+  logic                        v_psel;
+  logic [ADDR_W-1:0]           v_idx;
+  logic                        v_idx_ok;
+  logic [31:0]                 v_pwdata;
+  logic [3:0]                  v_lane_ok; // lane belongs to an existing S-mode-or-below line
+  logic [N_INTV-1:0]           v_psel_oh;
+  logic [N_INTV-1:0][31:0]     v_prdata;
+  logic [N_INTV-1:0]           v_pready;
+  logic [N_INTV-1:0]           v_pslverr;
+  logic [31:0]                 v_sel_prdata;
+  logic                        v_sel_pready, v_sel_pslverr;
+
+  // clicvs
+  logic                        vs_psel;
+  logic [ADDR_W-1:0]           vs_idx;
+  logic                        vs_idx_ok;
+  logic [N_VS-1:0]             vs_psel_oh;
+  logic [N_VS-1:0][31:0]       vs_prdata;
+  logic [N_VS-1:0]             vs_pready;
+  logic [N_VS-1:0]             vs_pslverr;
+  logic [31:0]                 vs_sel_prdata;
+  logic                        vs_sel_pready, vs_sel_pslverr;
+
+  // configuration register, aliased into the M-mode and S-mode windows
+  // 0x0000 (machine mode) and 0x8000 (supervisor mode)
+  cliccfg_reg i_cliccfg_reg (
+    .clk           (clk_i),
+    .arst_n        (rst_ni),
+
+    .s_apb_psel    (cliccfg_psel),
+    .s_apb_penable (penable),
+    .s_apb_pwrite  (pwrite),
+    .s_apb_pprot   (pprot),
+    .s_apb_paddr   (leaf_paddr),
+    .s_apb_pwdata  (pwdata),
+    .s_apb_pstrb   (pstrb),
+    .s_apb_pready  (cliccfg_pready),
+    .s_apb_prdata  (cliccfg_prdata),
+    .s_apb_pslverr (cliccfg_pslverr),
+
+    .hwif_out      (cliccfg_hwif_out)
   );
 
   // interrupt control and status registers (per interrupt line)
   // 0x1000 - 0x4fff (machine mode)
-  reg_req_t reg_all_int_req;
-  reg_rsp_t reg_all_int_rsp;
-  logic [ADDR_W-1:0] int_addr;
-
-  reg_req_t [N_SOURCE-1:0] reg_int_req;
-  reg_rsp_t [N_SOURCE-1:0] reg_int_rsp;
-
-  // Check that the address is withing the range of implemented interrupt lines
-  logic int_addr_ok;
-
-  assign int_addr    = reg_all_int_req.addr[ADDR_W-1:2];
-  assign int_addr_ok = (int_addr < N_SOURCE);
+  assign int_idx_ok = (int_idx < N_SOURCE);
 
   always_comb begin
-    reg_int_req = '0;
-    if (int_addr_ok) reg_int_req[int_addr] = reg_all_int_req;
+    int_psel_oh = '0;
+    if (int_psel && int_idx_ok) int_psel_oh[int_idx] = 1'b1;
   end
 
-  always_comb begin
-    reg_all_int_rsp       = '0;
-    reg_all_int_rsp.ready = 1'b1;
-    if (int_addr_ok) reg_all_int_rsp = reg_int_rsp[int_addr];
-  end
+  assign int_sel_prdata  = int_idx_ok ? int_prdata[int_idx]  : 32'h0;
+  assign int_sel_pready  = int_idx_ok ? int_pready[int_idx]  : 1'b1;
+  assign int_sel_pslverr = int_idx_ok ? int_pslverr[int_idx] : 1'b0;
 
   for (genvar i = 0; i < N_SOURCE; i++) begin : gen_clic_int
-    clicint_reg_top #(
-      .reg_req_t (reg_req_t),
-      .reg_rsp_t (reg_rsp_t)
-    ) i_clicint_reg_top (
-      .clk_i,
-      .rst_ni,
+    clicint_reg i_clicint_reg (
+      .clk           (clk_i),
+      .arst_n        (rst_ni),
 
-      .reg_req_i (reg_int_req[i]),
-      .reg_rsp_o (reg_int_rsp[i]),
+      .s_apb_psel    (int_psel_oh[i]),
+      .s_apb_penable (penable),
+      .s_apb_pwrite  (pwrite),
+      .s_apb_pprot   (pprot),
+      .s_apb_paddr   (leaf_paddr),
+      .s_apb_pwdata  (int_pwdata),
+      .s_apb_pstrb   (pstrb),
+      .s_apb_pready  (int_pready[i]),
+      .s_apb_prdata  (int_prdata[i]),
+      .s_apb_pslverr (int_pslverr[i]),
 
-      .reg2hw (clicint_reg2hw[i]),
-      .hw2reg (clicint_hw2reg[i]),
-
-      .devmode_i  (1'b1)
+      .hwif_in       (clicint_hwif_in[i]),
+      .hwif_out      (clicint_hwif_out[i])
     );
   end
 
-  // interrupt control and status registers (per interrupt line)
-  // 0x???? - 0x???? (machine mode)
-  reg_req_t reg_all_v_req;
-  reg_rsp_t reg_all_v_rsp;
-  logic [ADDR_W-1:0] v_addr;
-  logic              v_addr_ok;
+  // interrupt virtualization registers (one per four interrupt lines)
+  // 0xd000 - 0xdfff (supervisor mode)
+  if (VSCLIC) begin : gen_clic_intv
 
-  reg_req_t [ceil_div(N_SOURCE, 4)-1:0] reg_v_req;
-  reg_rsp_t [ceil_div(N_SOURCE, 4)-1:0] reg_v_rsp;
-
-  // VSPRIO register interface signals
-  reg_req_t reg_all_vs_req;
-  reg_rsp_t reg_all_vs_rsp;
-  logic [ADDR_W-1:0] vs_addr;
-  logic              vs_addr_ok;
-
-  reg_req_t [(MAX_VSCTXTS/4)-1:0] reg_vs_req;
-  reg_rsp_t [(MAX_VSCTXTS/4)-1:0] reg_vs_rsp;
-
-  if (VSCLIC) begin
-
-    assign v_addr    = reg_all_v_req.addr[ADDR_W-1:2];
-    // Check that the address is withing the range of implemented interrupt lines
-    assign v_addr_ok = (v_addr < ceil_div(N_SOURCE, 4));
+    assign v_idx_ok = (v_idx < N_INTV);
 
     always_comb begin
-      reg_v_req = '0;
-      if (v_addr_ok) reg_v_req[v_addr] = reg_all_v_req;
+      v_psel_oh = '0;
+      if (v_psel && v_idx_ok) v_psel_oh[v_idx] = 1'b1;
     end
 
-    always_comb begin
-      reg_all_v_rsp       = '0;
-      reg_all_v_rsp.ready = 1'b1;
-      if (v_addr_ok) reg_all_v_rsp = reg_v_rsp[v_addr];
-    end
+    assign v_sel_prdata  = v_idx_ok ? v_prdata[v_idx]  : 32'h0;
+    assign v_sel_pready  = v_idx_ok ? v_pready[v_idx]  : 1'b1;
+    assign v_sel_pslverr = v_idx_ok ? v_pslverr[v_idx] : 1'b0;
 
-    for (genvar i = 0; i < ceil_div(N_SOURCE, 4); i++) begin : gen_clic_intv
-      clicintv_reg_top #(
-        .reg_req_t (reg_req_t),
-        .reg_rsp_t (reg_rsp_t)
-      ) i_clicintv_reg_top (
-        .clk_i,
-        .rst_ni,
+    for (genvar i = 0; i < N_INTV; i++) begin : gen_clic_intv_blk
+      clicintv_reg i_clicintv_reg (
+        .clk           (clk_i),
+        .arst_n        (rst_ni),
 
-        .reg_req_i (reg_v_req[i]),
-        .reg_rsp_o (reg_v_rsp[i]),
+        .s_apb_psel    (v_psel_oh[i]),
+        .s_apb_penable (penable),
+        .s_apb_pwrite  (pwrite),
+        .s_apb_pprot   (pprot),
+        .s_apb_paddr   (leaf_paddr),
+        .s_apb_pwdata  (v_pwdata),
+        .s_apb_pstrb   (pstrb),
+        .s_apb_pready  (v_pready[i]),
+        .s_apb_prdata  (v_prdata[i]),
+        .s_apb_pslverr (v_pslverr[i]),
 
-        .reg2hw (clicintv_reg2hw[i]),
-        // .hw2reg (clicintv_hw2reg[i]),
-
-        .devmode_i  (1'b1)
+        .hwif_out      (clicintv_hwif_out[i])
       );
     end
 
-    if (VSPRIO) begin
+    // VS priority registers (one per four VS contexts)
+    // 0xe000 - 0xefff (supervisor mode)
+    if (VSPRIO) begin : gen_clic_vs
 
-      assign vs_addr    = reg_all_vs_req.addr[ADDR_W-1:2];
-      // Check that the address is withing the range of implemented interrupt lines
-      assign vs_addr_ok = (vs_addr < (MAX_VSCTXTS/4));
-
-      always_comb begin
-        reg_vs_req = '0;
-        if (vs_addr_ok) reg_vs_req[vs_addr] = reg_all_vs_req;
-      end
+      assign vs_idx_ok = (vs_idx < N_VS);
 
       always_comb begin
-        reg_all_vs_rsp       = '0;
-        reg_all_vs_rsp.ready = 1'b1;
-        if (vs_addr_ok) reg_all_vs_rsp = reg_vs_rsp[vs_addr];
+        vs_psel_oh = '0;
+        if (vs_psel && vs_idx_ok) vs_psel_oh[vs_idx] = 1'b1;
       end
 
-      for(genvar i = 0; i < (MAX_VSCTXTS/4); i++) begin : gen_clic_vs
+      assign vs_sel_prdata  = vs_idx_ok ? vs_prdata[vs_idx]  : 32'h0;
+      assign vs_sel_pready  = vs_idx_ok ? vs_pready[vs_idx]  : 1'b1;
+      assign vs_sel_pslverr = vs_idx_ok ? vs_pslverr[vs_idx] : 1'b0;
 
-        clicvs_reg_top #(
-          .reg_req_t (reg_req_t),
-          .reg_rsp_t (reg_rsp_t)
-        ) i_clicvs_reg_top (
-          .clk_i,
-          .rst_ni,
+      for (genvar i = 0; i < N_VS; i++) begin : gen_clic_vs_blk
+        clicvs_reg i_clicvs_reg (
+          .clk           (clk_i),
+          .arst_n        (rst_ni),
 
-          .reg_req_i (reg_vs_req[i]),
-          .reg_rsp_o (reg_vs_rsp[i]),
+          .s_apb_psel    (vs_psel_oh[i]),
+          .s_apb_penable (penable),
+          .s_apb_pwrite  (pwrite),
+          .s_apb_pprot   (pprot),
+          .s_apb_paddr   (leaf_paddr),
+          .s_apb_pwdata  (pwdata),
+          .s_apb_pstrb   (pstrb),
+          .s_apb_pready  (vs_pready[i]),
+          .s_apb_prdata  (vs_prdata[i]),
+          .s_apb_pslverr (vs_pslverr[i]),
 
-          .reg2hw (clicvs_reg2hw[i]),
-          // .hw2reg (clicvs_hw2reg[i]),
-
-          .devmode_i  (1'b1)
+          .hwif_out      (clicvs_hwif_out[i])
         );
-
       end
 
-    end else begin
-      assign clicvs_reg2hw      = '0;
-      // assign clicvs_hw2reg   = '0;
-      assign reg_vs_req         = '0;
-      assign reg_vs_rsp         = '0;
-      assign vs_addr            = '0;
-      assign vs_addr_ok         = 1'b0;
-      assign reg_all_vs_rsp     = '0;
+    end else begin : gen_no_clic_vs
+      for (genvar i = 0; i < N_VS; i++) begin : gen_tie_vs
+        assign clicvs_hwif_out[i] = '{default: '0};
+      end
+      assign vs_psel_oh     = '0;
+      assign vs_prdata      = '0;
+      assign vs_pready      = '0;
+      assign vs_pslverr     = '0;
+      assign vs_idx_ok      = 1'b0;
+      assign vs_sel_prdata  = 32'h0;
+      assign vs_sel_pready  = 1'b1;
+      assign vs_sel_pslverr = 1'b0;
     end
 
-  end else begin
-    assign clicintv_reg2hw    = '0;
-    // assign clicintv_hw2reg = '0;
-    assign reg_v_req          = '0;
-    assign reg_v_rsp          = '0;
-    assign v_addr             = '0;
-    assign v_addr_ok          = 1'b0;
-    assign reg_all_v_rsp      = '0;
+  end else begin : gen_no_clic_intv
+    for (genvar i = 0; i < N_INTV; i++) begin : gen_tie_intv
+      assign clicintv_hwif_out[i] = '{default: '0};
+    end
+    for (genvar i = 0; i < N_VS; i++) begin : gen_tie_vs
+      assign clicvs_hwif_out[i] = '{default: '0};
+    end
+    assign v_psel_oh      = '0;
+    assign v_prdata       = '0;
+    assign v_pready       = '0;
+    assign v_pslverr      = '0;
+    assign v_idx_ok       = 1'b0;
+    assign v_sel_prdata   = 32'h0;
+    assign v_sel_pready   = 1'b1;
+    assign v_sel_pslverr  = 1'b0;
+
+    assign vs_psel_oh     = '0;
+    assign vs_prdata      = '0;
+    assign vs_pready      = '0;
+    assign vs_pslverr     = '0;
+    assign vs_idx_ok      = 1'b0;
+    assign vs_sel_prdata  = 32'h0;
+    assign vs_sel_pready  = 1'b1;
+    assign vs_sel_pslverr = 1'b0;
   end
 
-  // top level address decoding and bus muxing
+  ///////////////////////////////////////////////////
+  //         Top level address decoding            //
+  ///////////////////////////////////////////////////
 
   // Helper signal used to store intermediate address
   logic [ADDR_W-1:0] addr_tmp;
 
+  // The access decoded to a window but is not permitted or not implemented:
+  // terminate it immediately, returning zeros without an error.
+  logic void_access;
+
   always_comb begin : clic_addr_decode
-    reg_mclic_req   = '0;
-    reg_all_int_req = '0;
-    reg_all_v_req   = '0;
-    reg_all_vs_req  = '0;
-    reg_rsp_o       = '0;
+    // Index of the interrupt line an access refers to. Every window is larger
+    // than the number of lines behind it, so the index is range-checked before
+    // it reaches intmode/intv/vsid: without the clamp an access to the unused
+    // top of a window would read those arrays out of bounds.
+    automatic logic [ADDR_W-1:0] line_idx;
+    automatic logic              line_ok;
+    automatic logic [ADDR_W-1:0] line_idx_safe;
 
-    addr_tmp        = '0;
+    line_idx      = '0;
+    line_ok       = 1'b0;
+    line_idx_safe = '0;
 
-    unique case(reg_req_i.addr[ADDR_W-1:0]) inside
+    cliccfg_psel  = 1'b0;
+
+    int_psel    = 1'b0;
+    int_idx     = '0;
+    int_pwdata  = pwdata;
+
+    v_psel      = 1'b0;
+    v_idx       = '0;
+    v_pwdata    = pwdata;
+    v_lane_ok   = 4'b1111;
+
+    vs_psel     = 1'b0;
+    vs_idx      = '0;
+
+    void_access = 1'b0;
+
+    addr_tmp    = '0;
+
+    unique case(apb_req_i.paddr[ADDR_W-1:0]) inside
       MCLICCFG_START: begin
-        reg_mclic_req = reg_req_i;
-        reg_rsp_o = reg_mclic_rsp;
+        cliccfg_psel = psel;
       end
       [MCLICINT_START:MCLICINT_END]: begin
-        reg_all_int_req = reg_req_i;
-        reg_all_int_req.addr = reg_req_i.addr - MCLICINT_START;
-        reg_rsp_o = reg_all_int_rsp;
+        addr_tmp = apb_req_i.paddr[ADDR_W-1:0] - MCLICINT_START;
+        int_psel = psel;
+        int_idx  = {2'b0, addr_tmp[ADDR_W-1:2]};
       end
       SCLICCFG_START: begin
         if (SSCLIC) begin
-          reg_mclic_req = reg_req_i;
-          reg_rsp_o = reg_mclic_rsp;
+          cliccfg_psel = psel;
+        end else begin
+          void_access = 1'b1;
         end
       end
       [SCLICINT_START:SCLICINT_END]: begin
         if (SSCLIC) begin
-          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - SCLICINT_START;
-          if (intmode[addr_tmp[ADDR_W-1:2]] <= S_MODE) begin
-            // check whether the irq we want to access is s-mode or lower
-            reg_all_int_req = reg_req_i;
-            reg_all_int_req.addr = addr_tmp;
-            // Prevent setting interrupt mode to m-mode . This is currently a
-            // bit ugly but will be nicer once we do away with auto generated
-            // clicint registers
-            reg_all_int_req.wdata[23] = 1'b0;
-            reg_rsp_o = reg_all_int_rsp;
+          addr_tmp      = apb_req_i.paddr[ADDR_W-1:0] - SCLICINT_START;
+          line_idx      = {2'b0, addr_tmp[ADDR_W-1:2]};
+          line_ok       = (line_idx < N_SOURCE);
+          line_idx_safe = line_ok ? line_idx : '0;
+          // check whether the irq we want to access is s-mode or lower
+          if (line_ok && (intmode[line_idx_safe] <= S_MODE)) begin
+            int_psel = psel;
+            int_idx  = line_idx;
+            // Prevent setting interrupt mode to m-mode
+            int_pwdata[23] = 1'b0;
           end else begin
-            // inaccesible (all zero)
-            reg_rsp_o.rdata = '0;
-            reg_rsp_o.error = '0;
-            reg_rsp_o.ready = 1'b1;
+            void_access = 1'b1;
           end
+        end else begin
+          void_access = 1'b1;
         end
       end
       [SCLICINTV_START:SCLICINTV_END]: begin
         if (VSCLIC) begin
-          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - SCLICINTV_START;
-          reg_all_v_req = reg_req_i;
-          reg_all_v_req.addr = addr_tmp;
-          addr_tmp = {addr_tmp[ADDR_W-1:2], 2'b0};
-          reg_rsp_o = reg_all_v_rsp;
-          if(intmode[addr_tmp + 0] > S_MODE) begin
-            reg_all_v_req.wdata[7:0] = 8'b0;
-            reg_rsp_o.rdata[7:0] = 8'b0;
-          end
-          if(intmode[addr_tmp + 1] > S_MODE) begin
-            reg_all_v_req.wdata[15:8] = 8'b0;
-            reg_rsp_o.rdata[15:8] = 8'b0;
-          end
-          if(intmode[addr_tmp + 2] > S_MODE) begin
-            reg_all_v_req.wdata[23:16] = 8'b0;
-            reg_rsp_o.rdata[23:16] = 8'b0;
-          end
-          if(intmode[addr_tmp + 3] > S_MODE) begin
-            reg_all_v_req.wdata[31:24] = 8'b0;
-            reg_rsp_o.rdata[31:24] = 8'b0;
+          addr_tmp = apb_req_i.paddr[ADDR_W-1:0] - SCLICINTV_START;
+          v_psel   = psel;
+          v_idx    = {2'b0, addr_tmp[ADDR_W-1:2]};
+          // One lane per interrupt line. A lane whose line does not exist, or
+          // is configured above S-mode, has no virtualization state: it is
+          // written as zero and reads back as zero.
+          for (int unsigned k = 0; k < 4; k++) begin
+            line_idx      = ({2'b0, addr_tmp[ADDR_W-1:2]} << 2) + k[ADDR_W-1:0];
+            line_ok       = (line_idx < N_SOURCE);
+            line_idx_safe = line_ok ? line_idx : '0;
+            v_lane_ok[k]  = line_ok && (intmode[line_idx_safe] <= S_MODE);
+            if (!v_lane_ok[k]) v_pwdata[8*k +: 8] = 8'b0;
           end
         end else begin
-          // VSCLIC disabled
-          reg_rsp_o.rdata = '0;
-          reg_rsp_o.error = '0;
-          reg_rsp_o.ready = 1'b1;
+          void_access = 1'b1;
         end
       end
       [VSCLICPRIO_START:VSCLICPRIO_END]: begin
-        if(VSCLIC && VSPRIO) begin
-          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - VSCLICPRIO_START;
-          reg_all_vs_req = reg_req_i;
-          reg_all_vs_req.addr = addr_tmp;
-          reg_rsp_o = reg_all_vs_rsp;
+        if (VSCLIC && VSPRIO) begin
+          addr_tmp = apb_req_i.paddr[ADDR_W-1:0] - VSCLICPRIO_START;
+          vs_psel  = psel;
+          vs_idx   = {2'b0, addr_tmp[ADDR_W-1:2]};
         end else begin
-          reg_rsp_o.rdata = '0;
-          reg_rsp_o.error = '0;
-          reg_rsp_o.ready = 1'b1;
+          void_access = 1'b1;
         end
       end
       default: begin
-        // inaccesible (all zero)
-        reg_rsp_o.rdata = '0;
-        reg_rsp_o.error = '0;
-        reg_rsp_o.ready = 1'b1;
+        void_access = 1'b1;
       end
-    endcase // unique case (reg_req_i.addr)
+    endcase // unique case (apb_req_i.paddr)
 
     // Match VS address space
     if (VSCLIC) begin
       for (int i = 0; i < N_VSCTXTS; i++) begin
-        if (reg_req_i.addr[ADDR_W-1:0] == VSCLICCFG_START[i]) begin
-            // inaccesible (all zero)
-            reg_rsp_o.rdata = '0;
-            reg_rsp_o.error = '0;
-            reg_rsp_o.ready = 1'b1;
-        end else if (VSCLICINT_START[i] <= reg_req_i.addr[ADDR_W-1:0] &&
-                     reg_req_i.addr[ADDR_W-1:0] <= VSCLICINT_END[i]) begin
-          addr_tmp = reg_req_i.addr[ADDR_W-1:0] - VSCLICINT_START[i];
-          if ((intmode[addr_tmp[ADDR_W-1:2]] == S_MODE) &&
-              (intv[addr_tmp[ADDR_W-1:2]])              &&
-              (vsid[addr_tmp[ADDR_W-1:2]] == (i + 1))) begin
-            // check whether the irq we want to access is s-mode and its v bit is set and the VSID corresponds
-            reg_all_int_req = reg_req_i;
-            reg_all_int_req.addr = addr_tmp;
-            // Prevent setting interrupt mode to m-mode. This is currently a
-            // bit ugly but will be nicer once we do away with auto generated
-            // clicint registers
-            reg_all_int_req.wdata[23] = 1'b0;
-            reg_rsp_o = reg_all_int_rsp;
+        if (apb_req_i.paddr[ADDR_W-1:0] == VSCLICCFG_START[i]) begin
+          void_access = 1'b1;
+        end else if (VSCLICINT_START[i] <= apb_req_i.paddr[ADDR_W-1:0] &&
+                     apb_req_i.paddr[ADDR_W-1:0] <= VSCLICINT_END[i]) begin
+          addr_tmp      = apb_req_i.paddr[ADDR_W-1:0] - VSCLICINT_START[i];
+          line_idx      = {2'b0, addr_tmp[ADDR_W-1:2]};
+          line_ok       = (line_idx < N_SOURCE);
+          line_idx_safe = line_ok ? line_idx : '0;
+          // check whether the irq we want to access is s-mode and its v bit is
+          // set and the VSID corresponds
+          if (line_ok                                &&
+              (intmode[line_idx_safe] == S_MODE)     &&
+              intv[line_idx_safe]                    &&
+              (vsid[line_idx_safe] == VSID_W'(i + 1))) begin
+            int_psel = psel;
+            int_idx  = line_idx;
+            // Prevent setting interrupt mode to m-mode
+            int_pwdata[23] = 1'b0;
+            void_access    = 1'b0;
           end else begin
-            // inaccesible (all zero)
-            reg_rsp_o.rdata = '0;
-            reg_rsp_o.error = '0;
-            reg_rsp_o.ready = 1'b1;
+            void_access = 1'b1;
           end
         end
       end
+    end
+  end
+
+  // Response mux: at most one group is selected at a time.
+  always_comb begin : clic_rsp_mux
+    prdata  = 32'h0;
+    pready  = 1'b1;
+    pslverr = 1'b0;
+
+    if (void_access) begin
+      // inaccesible (all zero)
+      prdata  = 32'h0;
+      pready  = 1'b1;
+      pslverr = 1'b0;
+    end else if (cliccfg_psel) begin
+      prdata  = cliccfg_prdata;
+      pready  = cliccfg_pready;
+      pslverr = cliccfg_pslverr;
+    end else if (int_psel) begin
+      prdata  = int_sel_prdata;
+      pready  = int_sel_pready;
+      pslverr = int_sel_pslverr;
+    end else if (v_psel) begin
+      prdata  = v_sel_prdata;
+      pready  = v_sel_pready;
+      pslverr = v_sel_pslverr;
+      // Lanes without virtualization state read back as zero.
+      for (int unsigned k = 0; k < 4; k++) begin
+        if (!v_lane_ok[k]) prdata[8*k +: 8] = 8'b0;
+      end
+    end else if (vs_psel) begin
+      prdata  = vs_sel_prdata;
+      pready  = vs_sel_pready;
+      pslverr = vs_sel_pslverr;
     end
   end
 
@@ -721,16 +849,14 @@ module clic
     .clk_i,
     .rst_ni,
 
-    .mclic_reg2hw,
+    .cliccfg_hwif_out,
 
-    .clicint_reg2hw,
-    .clicint_hw2reg,
+    .clicint_hwif_out,
+    .clicint_hwif_in,
 
-    .clicintv_reg2hw,
-    // .clicintv_hw2reg,
+    .clicintv_hwif_out,
 
-    .clicvs_reg2hw,
-    // .clicvs_hw2reg,
+    .clicvs_hwif_out,
 
     .intctl_o  (intctl),
     .intmode_o (intmode),
@@ -752,8 +878,8 @@ module clic
   always_comb begin
     // Saturate nlbits if nlbits > clicintctlbits (nlbits > 0 && nlbits <= 8)
     mnlbits = INTCTLBITS;
-    if (mclic_reg2hw.mcliccfg.mnlbits.q <= INTCTLBITS)
-      mnlbits = mclic_reg2hw.mcliccfg.mnlbits.q;
+    if (cliccfg_hwif_out.cliccfg.mnlbits.value <= INTCTLBITS)
+      mnlbits = cliccfg_hwif_out.cliccfg.mnlbits.value;
   end
 
   logic [7:0] irq_level_tmp;
@@ -802,10 +928,10 @@ module clic
     nmbits = 2'b0;
 
     if (VSCLIC || SSCLIC || USCLIC)
-      nmbits[0] = mclic_reg2hw.mcliccfg.nmbits.q[0];
+      nmbits[0] = cliccfg_hwif_out.cliccfg.nmbits.value[0];
 
     if ((VSCLIC || SSCLIC) && USCLIC)
-      nmbits[1] = mclic_reg2hw.mcliccfg.nmbits.q[1];
+      nmbits[1] = cliccfg_hwif_out.cliccfg.nmbits.value[1];
   end
 
   logic [1:0] irq_mode_tmp;

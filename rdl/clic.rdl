@@ -1,0 +1,115 @@
+// Copyright 2026 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+// CLIC software-visible memory map.
+//
+// This describes what software sees, not how the RTL is built. The RTL
+// instantiates one single-register block per interrupt line and resolves the
+// windows below in the decoder of clic.sv, which is why this file is never fed
+// to `peakrdl regblock`. It exists so that headers, documentation and
+// superproject address maps are generated from the same register definitions
+// as the RTL (see clic_regs.rdl) rather than restating them.
+//
+// The address range is divided into blocks of 32KiB: one for M-mode, one for
+// S-mode, and up to 64 more, one per guest VS context.
+//
+//   M_MODE   : [0x000000 - 0x007fff]
+//   S_MODE   : [0x008000 - 0x00ffff]
+//   VS_1     : [0x010000 - 0x017fff]
+//   VS_2     : [0x018000 - 0x01ffff]
+//     :
+//   VS_64    : [0x208000 - 0x20ffff]
+//
+// The same clicint storage is reachable through the M-mode window, the S-mode
+// window and every VS window. Those are genuine aliases in hardware, but they
+// are modelled here as separate instances because software really does address
+// them separately and the access rules differ per window: an S-mode or VS-mode
+// access to a line configured above its privilege is dropped and reads back as
+// zero. That filtering depends on the contents of other registers and cannot be
+// expressed in SystemRDL at all -- see the README.
+//
+// Parameters:
+//   NumSources  number of implemented interrupt lines (N_SOURCE in clic.sv)
+//   NumVsCtxts  number of implemented VS contexts     (N_VSCTXTS in clic.sv)
+//
+// Define CLIC_VSCLIC to include the virtualization registers and VS windows,
+// matching the VSCLIC parameter of clic.sv.
+
+`ifndef CLIC_RDL
+`define CLIC_RDL
+
+`include "clic_regs.rdl"
+
+// Machine-mode window: configuration plus the interrupt control registers.
+regfile clic_m_window_t #( longint unsigned NumSources = 256 ) {
+  desc = "CLIC machine mode window";
+  cliccfg_t cliccfg             @ 0x0000;
+  clicint_t clicint[NumSources] @ 0x1000 += 0x4;
+};
+
+// Supervisor-mode window: the same configuration and interrupt control
+// registers, plus the vCLIC virtualization and VS priority registers, which are
+// reachable only from here.
+regfile clic_s_window_t #(
+  longint unsigned NumSources = 256,
+  longint unsigned NumIntv    = 64,
+  longint unsigned NumVsPrio  = 16
+) {
+  desc = "CLIC supervisor mode window";
+  cliccfg_t  cliccfg              @ 0x0000;
+  clicint_t  clicint[NumSources]  @ 0x1000 += 0x4;
+`ifdef CLIC_VSCLIC
+  clicintv_t clicintv[NumIntv]    @ 0x5000 += 0x4;
+  vsprio_t   vsprio[NumVsPrio]    @ 0x6000 += 0x4;
+`endif
+};
+
+`ifdef CLIC_VSCLIC
+// Virtual-supervisor window: interrupt control registers only. One per guest.
+regfile clic_vs_window_t #( longint unsigned NumSources = 256 ) {
+  desc = "CLIC virtual supervisor window";
+  clicint_t clicint[NumSources] @ 0x1000 += 0x4;
+};
+`endif
+
+addrmap clic #(
+  longint unsigned NumSources = 256,
+  longint unsigned NumVsCtxts = 4,
+  longint unsigned WindowSize = 0x40000
+) {
+  name = "CLIC";
+  desc = "RISC-V Core Local Interrupt Controller";
+
+  default regwidth = 32;
+  default accesswidth = 32;
+
+  clic_m_window_t #( .NumSources(NumSources) ) m @ 0x0000;
+
+  // NumIntv is ceil(NumSources / 4): one clicintv register per four lines.
+  clic_s_window_t #(
+    .NumSources(NumSources),
+    .NumIntv((NumSources + 3) / 4),
+    .NumVsPrio(16)
+  ) s @ 0x8000;
+
+`ifdef CLIC_VSCLIC
+  clic_vs_window_t #( .NumSources(NumSources) ) vs[NumVsCtxts] @ 0x10000 += 0x8000;
+`endif
+
+  // The windows above occupy (2 + NumVsCtxts) * 32KiB, but the RTL decodes a
+  // power-of-two window: clic.sv slices paddr[ADDR_W-1:0] with
+  //   ADDR_W = $clog2((N_VSCTXTS + 2) * 32 * 1024)
+  // and answers anything in that slice, returning zero above the last window.
+  // WindowSize must equal 2**ADDR_W so this map describes the range the
+  // hardware really claims. SystemRDL has no clog2, so it cannot be derived
+  // here: an integrator changing NumVsCtxts must set it too. The default suits
+  // 1..6 VS contexts, which is the common case and matches the per-hart stride
+  // an SoC needs when instantiating one CLIC per hart. A value smaller than the
+  // windows above is rejected by the compiler as an overlap.
+  //
+  // The sentinel is what fixes the size; it is not a real register.
+  external reg { field {} _end[31:0] = 0; } _end @ (WindowSize - 4);
+};
+
+`endif // CLIC_RDL

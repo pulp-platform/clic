@@ -1,25 +1,12 @@
-// Copyright 2025 ETH Zurich and University of Bologna.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2026 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSES/SHL-0.51.txt for details.
+// SPDX-License-Identifier: SHL-0.51
 
-// SPDX-License-Identifier: Apache-2.0
+// Flattens the per-block PeakRDL hardware interfaces into the per-source
+// arrays consumed by clic_gateway and clic_target.
 
 module clic_reg_adapter
   import clic_pkg::*;
-  import mclic_reg_pkg::*;
-  import clicint_reg_pkg::*;
-  import clicintv_reg_pkg::*;
-  import clicvs_reg_pkg::*;
   import cf_math_pkg::*;
 #(
   parameter int N_SOURCE = 32,
@@ -30,14 +17,14 @@ module clic_reg_adapter
   input logic                 clk_i,
   input logic                 rst_ni,
 
-  input  mclic_reg_pkg::mclic_reg2hw_t mclic_reg2hw,
+  input  cliccfg_reg_pkg::cliccfg__out_t cliccfg_hwif_out,
 
-  input  clicint_reg_pkg::clicint_reg2hw_t [N_SOURCE-1:0] clicint_reg2hw,
-  output clicint_reg_pkg::clicint_hw2reg_t [N_SOURCE-1:0] clicint_hw2reg,
+  input  clicint_reg_pkg::clicint__out_t clicint_hwif_out [N_SOURCE],
+  output clicint_reg_pkg::clicint__in_t  clicint_hwif_in  [N_SOURCE],
 
-  input  clicintv_reg_pkg::clicintv_reg2hw_t [ceil_div(N_SOURCE, 4)-1:0] clicintv_reg2hw,
+  input  clicintv_reg_pkg::clicintv__out_t clicintv_hwif_out [ceil_div(N_SOURCE, 4)],
 
-  input  clicvs_reg_pkg::clicvs_reg2hw_t [(MAX_VSCTXTS/4)-1:0] clicvs_reg2hw,
+  input  clicvs_reg_pkg::clicvs__out_t clicvs_hwif_out [MAX_VSCTXTS/4],
 
   output logic [7:0]              intctl_o  [N_SOURCE],
   output logic [1:0]              intmode_o [N_SOURCE],
@@ -57,48 +44,53 @@ module clic_reg_adapter
   // We only support positive edge triggered and positive level triggered
   // interrupts atm. Either we hardware the trig.q[1] bit correctly or we
   // implement all modes
+  //
+  // `we` is tied high so the gateway drives pending every cycle. A software
+  // write to IP in the same cycle still wins: the register block resolves the
+  // conflict with `precedence = sw` (see src/gen/clicint.rdl), which is what
+  // makes a software-triggered interrupt possible.
   for (genvar i = 0; i < N_SOURCE; i++) begin : gen_reghw
-    assign intctl_o[i] = clicint_reg2hw[i].clicint.ctl.q;
-    assign intmode_o[i] = clicint_reg2hw[i].clicint.attr_mode.q;
-    assign shv_o[i] = clicint_reg2hw[i].clicint.attr_shv.q;
-    assign ip_sw_o[i] = clicint_reg2hw[i].clicint.ip.q;
-    assign ie_o[i] = clicint_reg2hw[i].clicint.ie.q;
-    assign clicint_hw2reg[i].clicint.ip.de = 1'b1; // Always write
-    assign clicint_hw2reg[i].clicint.ip.d  = ip_i[i];
-    assign le_o[i] = clicint_reg2hw[i].clicint.attr_trig.q[0];
+    assign intctl_o[i] = clicint_hwif_out[i].clicint.ctl.value;
+    assign intmode_o[i] = clicint_hwif_out[i].clicint.attr_mode.value;
+    assign shv_o[i] = clicint_hwif_out[i].clicint.attr_shv.value;
+    assign ip_sw_o[i] = clicint_hwif_out[i].clicint.ip.value;
+    assign ie_o[i] = clicint_hwif_out[i].clicint.ie.value;
+    assign clicint_hwif_in[i].clicint.ip.we   = 1'b1; // Always write
+    assign clicint_hwif_in[i].clicint.ip.next = ip_i[i];
+    assign le_o[i] = clicint_hwif_out[i].clicint.attr_trig.value[0];
   end
 
   for (genvar i = 0; i < rounddown(N_SOURCE, 4); i = i + 4) begin : gen_reghw_v
-    assign vsid_o[i+0] = clicintv_reg2hw[i/4].clicintv.vsid0.q;
-    assign intv_o[i+0] = clicintv_reg2hw[i/4].clicintv.v0.q;
-    assign vsid_o[i+1] = clicintv_reg2hw[i/4].clicintv.vsid1.q;
-    assign intv_o[i+1] = clicintv_reg2hw[i/4].clicintv.v1.q;
-    assign vsid_o[i+2] = clicintv_reg2hw[i/4].clicintv.vsid2.q;
-    assign intv_o[i+2] = clicintv_reg2hw[i/4].clicintv.v2.q;
-    assign vsid_o[i+3] = clicintv_reg2hw[i/4].clicintv.vsid3.q;
-    assign intv_o[i+3] = clicintv_reg2hw[i/4].clicintv.v3.q;
+    assign vsid_o[i+0] = clicintv_hwif_out[i/4].clicintv.vsid0.value;
+    assign intv_o[i+0] = clicintv_hwif_out[i/4].clicintv.v0.value;
+    assign vsid_o[i+1] = clicintv_hwif_out[i/4].clicintv.vsid1.value;
+    assign intv_o[i+1] = clicintv_hwif_out[i/4].clicintv.v1.value;
+    assign vsid_o[i+2] = clicintv_hwif_out[i/4].clicintv.vsid2.value;
+    assign intv_o[i+2] = clicintv_hwif_out[i/4].clicintv.v2.value;
+    assign vsid_o[i+3] = clicintv_hwif_out[i/4].clicintv.vsid3.value;
+    assign intv_o[i+3] = clicintv_hwif_out[i/4].clicintv.v3.value;
   end
 
-  if ((N_SOURCE%4) > 0) begin
-    assign vsid_o[N_SOURCE_ALIGNED+0] = clicintv_reg2hw[N_SOURCE/4].clicintv.vsid0.q;
-    assign intv_o[N_SOURCE_ALIGNED+0] = clicintv_reg2hw[N_SOURCE/4].clicintv.v0.q;
+  if ((N_SOURCE%4) > 0) begin : gen_reghw_v_rem0
+    assign vsid_o[N_SOURCE_ALIGNED+0] = clicintv_hwif_out[N_SOURCE/4].clicintv.vsid0.value;
+    assign intv_o[N_SOURCE_ALIGNED+0] = clicintv_hwif_out[N_SOURCE/4].clicintv.v0.value;
   end
 
-  if ((N_SOURCE%4) > 1) begin
-    assign vsid_o[N_SOURCE_ALIGNED+1] = clicintv_reg2hw[N_SOURCE/4].clicintv.vsid1.q;
-    assign intv_o[N_SOURCE_ALIGNED+1] = clicintv_reg2hw[N_SOURCE/4].clicintv.v1.q;
+  if ((N_SOURCE%4) > 1) begin : gen_reghw_v_rem1
+    assign vsid_o[N_SOURCE_ALIGNED+1] = clicintv_hwif_out[N_SOURCE/4].clicintv.vsid1.value;
+    assign intv_o[N_SOURCE_ALIGNED+1] = clicintv_hwif_out[N_SOURCE/4].clicintv.v1.value;
   end
 
-  if ((N_SOURCE%4) > 2) begin
-    assign vsid_o[N_SOURCE_ALIGNED+2] = clicintv_reg2hw[N_SOURCE/4].clicintv.vsid2.q;
-    assign intv_o[N_SOURCE_ALIGNED+2] = clicintv_reg2hw[N_SOURCE/4].clicintv.v2.q;
+  if ((N_SOURCE%4) > 2) begin : gen_reghw_v_rem2
+    assign vsid_o[N_SOURCE_ALIGNED+2] = clicintv_hwif_out[N_SOURCE/4].clicintv.vsid2.value;
+    assign intv_o[N_SOURCE_ALIGNED+2] = clicintv_hwif_out[N_SOURCE/4].clicintv.v2.value;
   end
 
   for (genvar i = 0; i < MAX_VSCTXTS; i = i + 4) begin : gen_reghw_vs
-    assign vsprio_o[i+0] = clicvs_reg2hw[i/4].vsprio.prio0.q;
-    assign vsprio_o[i+1] = clicvs_reg2hw[i/4].vsprio.prio1.q;
-    assign vsprio_o[i+2] = clicvs_reg2hw[i/4].vsprio.prio2.q;
-    assign vsprio_o[i+3] = clicvs_reg2hw[i/4].vsprio.prio3.q;
+    assign vsprio_o[i+0] = clicvs_hwif_out[i/4].vsprio.prio0.value;
+    assign vsprio_o[i+1] = clicvs_hwif_out[i/4].vsprio.prio1.value;
+    assign vsprio_o[i+2] = clicvs_hwif_out[i/4].vsprio.prio2.value;
+    assign vsprio_o[i+3] = clicvs_hwif_out[i/4].vsprio.prio3.value;
   end
 
 endmodule // clic_reg_adapter

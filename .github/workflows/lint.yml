@@ -25,15 +25,18 @@ jobs:
           Copyright (\d{4}(-\d{4})?\s)?(ETH Zurich and University of Bologna|lowRISC contributors).
         exclude_paths: |
           .dir-locals.el
+          .python-version
+          uv.lock
+          LICENSES/
     -
       name: Check license string
       run: |
-        N_FILES_WITHOUT_LICENCE=$(grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.hjson . | wc -l )
+        N_FILES_WITHOUT_LICENCE=$(grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.rdl . | wc -l )
         if [[ ${N_FILES_WITHOUT_LICENCE} -eq 0 ]]; then
           echo "All files contain SPDX-License-Identifier"
         else
           echo "Files missing SPDX-License-Identifier:"
-          grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.hjson .
+          grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.rdl .
           false
         fi
 
@@ -79,4 +82,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           reviewdog-name: slang-elaboration
-          slang-flags: '-f slang.f --top clic_apb'
+          slang-flags: '-f slang.f --top clic'

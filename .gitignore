@@ -1,3 +1,5 @@
 .bender/
 test/verilator/
 test/vsim/
+.venv/
+test/clic_reg_defs.svh

@@ -20,16 +20,14 @@ clic:
   files:
     - src/clic_pkg.sv
     - src/clicint_reg_pkg.sv
-    - src/clicint_reg_top.sv
+    - src/clicint_reg.sv
     - src/clicintv_reg_pkg.sv
-    - src/clicintv_reg_top.sv
+    - src/clicintv_reg.sv
     - src/clicvs_reg_pkg.sv
-    - src/clicvs_reg_top.sv
-    - src/mclic_reg_pkg.sv
-    - src/mclic_reg_top.sv
+    - src/clicvs_reg.sv
+    - src/cliccfg_reg_pkg.sv
+    - src/cliccfg_reg.sv
     - src/clic_reg_adapter.sv
     - src/clic_gateway.sv
     - src/clic_target.sv
     - src/clic.sv
-  vlog_opts:
-    - -L register_interface_lib,
