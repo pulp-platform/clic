@@ -1,3 +1,4 @@
 .bender/
 test/verilator/
 test/vsim/
+.venv/
