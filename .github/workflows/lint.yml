@@ -16,10 +16,10 @@ jobs:
     steps:
     -
       name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
     -
       name: Check license
-      uses: pulp-platform/pulp-actions/lint-license@v2.4.1
+      uses: pulp-platform/pulp-actions/lint-license@v2.5.1
       with:
         license: |
           Copyright (\d{4}(-\d{4})?\s)?(ETH Zurich and University of Bologna|lowRISC contributors).
@@ -42,7 +42,7 @@ jobs:
     steps:
     -
       name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
     -
       name: Run Verible
       uses: chipsalliance/verible-linter-action@main
@@ -58,7 +58,7 @@ jobs:
     steps:
     -
       name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
     -
       name: Install Python
       uses: actions/setup-python@v5
@@ -71,3 +71,31 @@ jobs:
     -
       name: Run Tcllint
       run: tclint . --style-spaces-in-braces --style-line-length 100
+
+  slang:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    # Skip on forks or pull requests from forks due to missing secrets.
+    if: github.repository == 'pulp-platform/clic' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install bender
+        uses: pulp-platform/pulp-actions/bender-install@v2.5.1
+
+      - name: Generate file list
+        shell: bash
+        run: |
+          bender checkout
+          bender script flist-plus -t rtl > slang.f
+
+      - name: Run slang
+        uses: pulp-platform/pulp-actions/slang@v2.5.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          reviewdog-name: slang-elaboration
+          slang-flags: '-f slang.f --top clic_apb'
