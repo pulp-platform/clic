@@ -19,9 +19,20 @@
 `include "register_interface/typedef.svh"
 `include "register_interface/assign.svh"
 
-module clic_apb #(
+module clic_apb
+  import clic_pkg::*;
+#(
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
+  parameter bit  SSCLIC = 0,
+  parameter bit  USCLIC = 0,
+  parameter bit  VSCLIC = 0, // enable vCLIC (requires SSCLIC)
+  // vCLIC dependent parameters
+  parameter int unsigned N_VSCTXTS = 0, // Number of Virtual Contexts supported.
+                                        // This implementation assumes CLIC is mapped to an address
+                                        // range that allows up to 64 contexts (at least 512KiB)
+  parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
+  parameter int  VSPRIO_W = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
   // do not edit below, these are derived
   localparam int unsigned REG_BUS_ADDR_WIDTH = 32,
   localparam int unsigned REG_BUS_DATA_WIDTH = 32,
@@ -50,6 +61,8 @@ module clic_apb #(
   output [7:0]                          irq_level_o,
   output logic                          irq_shv_o,
   output logic [1:0]                    irq_priv_o,
+  output logic [VSID_W-1:0]             irq_vsid_o,
+  output logic                          irq_v_o,
   output logic                          irq_kill_req_o,
   input logic                           irq_kill_ack_i
 
@@ -98,6 +111,12 @@ module clic_apb #(
   clic #(
     .N_SOURCE  ( N_SOURCE          ),
     .INTCTLBITS( INTCTLBITS        ),
+    .SSCLIC    ( SSCLIC            ),
+    .USCLIC    ( USCLIC            ),
+    .VSCLIC    ( VSCLIC            ),
+    .N_VSCTXTS ( N_VSCTXTS         ),
+    .VSPRIO    ( VSPRIO            ),
+    .VSPRIO_W  ( VSPRIO_W          ),
     .reg_req_t ( reg_a32_d32_req_t ),
     .reg_rsp_t ( reg_a32_d32_rsp_t )
   ) i_clic (
@@ -115,6 +134,8 @@ module clic_apb #(
     .irq_level_o,
     .irq_shv_o,
     .irq_priv_o,
+    .irq_vsid_o,
+    .irq_v_o,
     .irq_kill_req_o,
     .irq_kill_ack_i
   );
