@@ -78,7 +78,9 @@ module clic_apb
   reg_req_t clic_req;
   reg_rsp_t clic_rsp;
 
+  // NOTE: `Feedthrough` must currently stay 0 for bug inside apb_to_reg_v2 adapter
   apb_to_reg_v2 #(
+    .Feedthrough ( 1'b0 ),
     .reg_req_t ( reg_req_t ),
     .reg_rsp_t ( reg_rsp_t )
   ) i_apb_to_reg (
