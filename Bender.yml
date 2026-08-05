@@ -26,6 +26,7 @@ remotes:
 
 dependencies:
   common_cells: { version: 1.40.0 }
+  common_verification: { version: 0.2.5 }
   register_interface: { version: 0.4.7 }
 
 sources:
@@ -43,4 +44,7 @@ sources:
   - src/clic_target.sv
   - src/clic_apb.sv
   - src/clic.sv
+  - target: test_clic
+    files:
+      - test/tb_clic.sv
 
