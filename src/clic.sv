@@ -432,15 +432,21 @@ module clic
   reg_req_t [N_SOURCE-1:0] reg_int_req;
   reg_rsp_t [N_SOURCE-1:0] reg_int_rsp;
 
-  // TODO: improve decoding by only deasserting valid
+  // Check that the address is withing the range of implemented interrupt lines
+  logic int_addr_ok;
+
+  assign int_addr    = reg_all_int_req.addr[ADDR_W-1:2];
+  assign int_addr_ok = (int_addr < N_SOURCE);
+
   always_comb begin
-    int_addr = reg_all_int_req.addr[ADDR_W-1:2];
-
     reg_int_req = '0;
-    reg_all_int_rsp = '0;
+    if (int_addr_ok) reg_int_req[int_addr] = reg_all_int_req;
+  end
 
-    reg_int_req[int_addr] = reg_all_int_req;
-    reg_all_int_rsp = reg_int_rsp[int_addr];
+  always_comb begin
+    reg_all_int_rsp       = '0;
+    reg_all_int_rsp.ready = 1'b1;
+    if (int_addr_ok) reg_all_int_rsp = reg_int_rsp[int_addr];
   end
 
   for (genvar i = 0; i < N_SOURCE; i++) begin : gen_clic_int
@@ -466,6 +472,7 @@ module clic
   reg_req_t reg_all_v_req;
   reg_rsp_t reg_all_v_rsp;
   logic [ADDR_W-1:0] v_addr;
+  logic              v_addr_ok;
 
   reg_req_t [ceil_div(N_SOURCE, 4)-1:0] reg_v_req;
   reg_rsp_t [ceil_div(N_SOURCE, 4)-1:0] reg_v_rsp;
@@ -474,20 +481,26 @@ module clic
   reg_req_t reg_all_vs_req;
   reg_rsp_t reg_all_vs_rsp;
   logic [ADDR_W-1:0] vs_addr;
+  logic              vs_addr_ok;
 
   reg_req_t [(MAX_VSCTXTS/4)-1:0] reg_vs_req;
   reg_rsp_t [(MAX_VSCTXTS/4)-1:0] reg_vs_rsp;
 
   if (VSCLIC) begin
 
+    assign v_addr    = reg_all_v_req.addr[ADDR_W-1:2];
+    // Check that the address is withing the range of implemented interrupt lines
+    assign v_addr_ok = (v_addr < ceil_div(N_SOURCE, 4));
+
     always_comb begin
-      reg_v_req       = '0;
-      reg_all_v_rsp   = '0;
+      reg_v_req = '0;
+      if (v_addr_ok) reg_v_req[v_addr] = reg_all_v_req;
+    end
 
-      v_addr = reg_all_v_req.addr[ADDR_W-1:2];
-
-      reg_v_req[v_addr] = reg_all_v_req;
-      reg_all_v_rsp = reg_v_rsp[v_addr];
+    always_comb begin
+      reg_all_v_rsp       = '0;
+      reg_all_v_rsp.ready = 1'b1;
+      if (v_addr_ok) reg_all_v_rsp = reg_v_rsp[v_addr];
     end
 
     for (genvar i = 0; i < ceil_div(N_SOURCE, 4); i++) begin : gen_clic_intv
@@ -510,14 +523,19 @@ module clic
 
     if (VSPRIO) begin
 
+      assign vs_addr    = reg_all_vs_req.addr[ADDR_W-1:2];
+      // Check that the address is withing the range of implemented interrupt lines
+      assign vs_addr_ok = (vs_addr < (MAX_VSCTXTS/4));
+
       always_comb begin
-        reg_vs_req       = '0;
-        reg_all_vs_rsp   = '0;
+        reg_vs_req = '0;
+        if (vs_addr_ok) reg_vs_req[vs_addr] = reg_all_vs_req;
+      end
 
-        vs_addr = reg_all_vs_req.addr[ADDR_W-1:2];
-
-        reg_vs_req[vs_addr] = reg_all_vs_req;
-        reg_all_vs_rsp = reg_vs_rsp[vs_addr];
+      always_comb begin
+        reg_all_vs_rsp       = '0;
+        reg_all_vs_rsp.ready = 1'b1;
+        if (vs_addr_ok) reg_all_vs_rsp = reg_vs_rsp[vs_addr];
       end
 
       for(genvar i = 0; i < (MAX_VSCTXTS/4); i++) begin : gen_clic_vs
@@ -546,6 +564,7 @@ module clic
       assign reg_vs_req         = '0;
       assign reg_vs_rsp         = '0;
       assign vs_addr            = '0;
+      assign vs_addr_ok         = 1'b0;
       assign reg_all_vs_rsp     = '0;
     end
 
@@ -555,6 +574,7 @@ module clic
     assign reg_v_req          = '0;
     assign reg_v_rsp          = '0;
     assign v_addr             = '0;
+    assign v_addr_ok          = 1'b0;
     assign reg_all_v_rsp      = '0;
   end
 
