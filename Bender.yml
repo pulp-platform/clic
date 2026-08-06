@@ -25,26 +25,27 @@ remotes:
   pulp: "https://github.com/pulp-platform"
 
 dependencies:
+  apb: { version: 0.2.4 }
   common_cells: { version: 1.40.0 }
   common_verification: { version: 0.2.5 }
-  register_interface: { version: 0.4.7 }
 
 sources:
   - src/clic_pkg.sv
   - src/clicint_reg_pkg.sv
-  - src/clicint_reg_top.sv
+  - src/clicint_reg.sv
   - src/clicintv_reg_pkg.sv
-  - src/clicintv_reg_top.sv
+  - src/clicintv_reg.sv
   - src/clicvs_reg_pkg.sv
-  - src/clicvs_reg_top.sv
-  - src/mclic_reg_pkg.sv
-  - src/mclic_reg_top.sv
+  - src/clicvs_reg.sv
+  - src/cliccfg_reg_pkg.sv
+  - src/cliccfg_reg.sv
   - src/clic_reg_adapter.sv
   - src/clic_gateway.sv
   - src/clic_target.sv
-  - src/clic_apb.sv
   - src/clic.sv
   - target: test_clic
+    include_dirs:
+      - test
     files:
       - test/tb_clic.sv
 

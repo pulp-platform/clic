@@ -25,17 +25,53 @@ jobs:
           Copyright (\d{4}(-\d{4})?\s)?(ETH Zurich and University of Bologna|lowRISC contributors).
         exclude_paths: |
           .dir-locals.el
+          .python-version
+          uv.lock
+          LICENSES/
     -
       name: Check license string
       run: |
-        N_FILES_WITHOUT_LICENCE=$(grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.hjson . | wc -l )
+        N_FILES_WITHOUT_LICENCE=$(grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.rdl . | wc -l )
         if [[ ${N_FILES_WITHOUT_LICENCE} -eq 0 ]]; then
           echo "All files contain SPDX-License-Identifier"
         else
           echo "Files missing SPDX-License-Identifier:"
-          grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.hjson .
+          grep -Lr -E "SPDX-License-Identifier: (SHL-0.51|Apache-2.0)" --exclude-dir=".git" --include \*.yml --include \*.sv --include \*.rdl .
           false
         fi
+
+  # The register blocks in src/ are generated from rdl/ and checked in, so they
+  # can silently drift from their source. Regenerate them and require the result
+  # to match. PeakRDL embeds no timestamp, path or version in its output, and
+  # --locked pins the generator, so this is a content comparison and not a
+  # source of flakes.
+  regs-up-to-date:
+    runs-on: ubuntu-latest
+    steps:
+    -
+      name: Checkout
+      uses: actions/checkout@v7
+    -
+      name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    -
+      name: Regenerate register blocks
+      run: make regs PEAKRDL="uv run --locked --group regs peakrdl"
+    -
+      name: Check the checked-in files match
+      run: |
+        if ! git diff --exit-code -- src/; then
+          echo "::error::Generated register files are out of date. Run 'make regs' and commit the result."
+          exit 1
+        fi
+    -
+      name: Check the memory map still elaborates
+      # rdl/clic.rdl produces no checked-in artefact, so nothing above compiles
+      # it. Exporting it here catches errors the leaf blocks cannot, such as
+      # windows overlapping at the maximum configuration.
+      run: make clic-defs clic-hdr PEAKRDL="uv run --locked --group regs peakrdl"
 
   lint-sv:
     runs-on: ubuntu-latest
@@ -79,4 +115,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           reviewdog-name: slang-elaboration
-          slang-flags: '-f slang.f --top clic_apb'
+          slang-flags: '-f slang.f --top clic'

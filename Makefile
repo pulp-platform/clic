@@ -20,8 +20,15 @@ VERILATOR ?= $(OSEDA) verilator
 QUESTA    ?= questa-2025.3
 VSIM      ?= $(QUESTA) vsim
 
+# clic.mk defaults PEAKRDL to a bare `peakrdl`, since an importing project
+# supplies its own. Standalone, this repository provisions the pinned version
+# with uv. Set before the include so the fragment's ?= does not override it.
+PEAKRDL   ?= uv run --group regs peakrdl
+
 TB        := tb_clic
 
+RDL_DIR   := rdl
+SRC_DIR   := src
 TEST_DIR  := test
 VLT_DIR   := $(TEST_DIR)/verilator
 VSIM_DIR  := $(TEST_DIR)/vsim
@@ -44,7 +51,7 @@ TB_PARAMS := N_SOURCE INTCTLBITS SSCLIC USCLIC VSCLIC N_VSCTXTS VSPRIO VSPRIO_W
 
 PARAM_FLAGS := $(foreach p,$(TB_PARAMS),-G$(p)=$($(p)))
 
-.PHONY: all vlt-sim vsim-sim checkout clean
+.PHONY: all vlt-sim vsim-sim checkout regs clean
 
 all: vlt-sim
 
@@ -52,14 +59,54 @@ checkout:
 	$(BENDER) checkout
 
 ##############
+# Registers  #
+##############
+
+# Memory-map views come from clic.mk, the fragment a superproject imports. Here
+# it only serves the testbench, so CLIC_ROOT is this repository.
+
+CLIC_ROOT        := .
+CLIC_NUM_SOURCES := 4096
+CLIC_NUM_VSCTXTS := 64
+CLIC_VSCLIC      := 1
+# 2**ceil(log2((2 + 64) * 32KiB)) = 4MiB, matching ADDR_W in clic.sv at 64 contexts.
+CLIC_WINDOW_SIZE := 0x400000
+CLIC_DEFS        := $(TEST_DIR)/clic_reg_defs.svh
+
+include clic.mk
+
+# RTL register block generation. This is a maintainer target, not part of
+# clic.mk: the blocks take no elaboration-time parameters, so they are identical
+# for every configuration and are checked into src/. A superproject consumes
+# them through Bender and never regenerates them; only a change to a .rdl file
+# requires running this.
+#
+#   --cpuif apb4-flat       individual APB4 ports rather than a SystemVerilog
+#                           interface, so clic.sv can fan the channel out itself
+#   --default-reset arst_n  match the asynchronous active-low rst_ni used
+#                           throughout the IP
+REGBLOCK_FLAGS ?= --cpuif apb4-flat --default-reset arst_n
+
+REG_BLOCKS := cliccfg clicint clicintv clicvs
+REG_SRCS   := $(foreach b,$(REG_BLOCKS),$(SRC_DIR)/$(b)_reg.sv $(SRC_DIR)/$(b)_reg_pkg.sv)
+
+# PeakRDL emits no license header and regblock has no option for one, so it is
+# prepended afterwards.
+REG_LICENSE := // Copyright 2026 ETH Zurich and University of Bologna.\n// Licensed under the Apache License, Version 2.0, see LICENSE for details.\n// SPDX-License-Identifier: Apache-2.0\n
+
+regs: $(REG_SRCS)
+
+$(SRC_DIR)/%_reg.sv $(SRC_DIR)/%_reg_pkg.sv: $(RDL_DIR)/%.rdl $(RDL_DIR)/clic_regs.rdl
+	$(PEAKRDL) regblock $< -o $(SRC_DIR) -I $(RDL_DIR) $(REGBLOCK_FLAGS) \
+		--module-name $*_reg --package-name $*_reg_pkg
+	@sed -i '1i$(REG_LICENSE)' $(SRC_DIR)/$*_reg.sv $(SRC_DIR)/$*_reg_pkg.sv
+
+##############
 # Verilator  #
 ##############
 
 # Verilator resolves parameters at compile time, so every distinct parameter set
-# needs its own build. Keying the object directory on all of them means `make
-# vlt-sim N_SOURCE=256` rebuilds instead of silently re-running the previous
-# binary. The tag is the parameter values joined in TB_PARAMS order, so the
-# defaults give obj_16_8_1_0_1_4_1_1.
+# needs its own build.
 empty :=
 space := $(empty) $(empty)
 VLT_OBJ := obj_$(subst $(space),_,$(strip $(foreach p,$(TB_PARAMS),$($(p)))))
@@ -83,7 +130,7 @@ $(VLT_DIR):
 $(VLT_DIR)/sources.f: Bender.yml Bender.lock | $(VLT_DIR)
 	$(BENDER) script verilator $(BENDER_TARGETS) > $@
 
-$(VLT_BIN): $(VLT_DIR)/sources.f $(wildcard src/*.sv) $(wildcard test/*.sv)
+$(VLT_BIN): $(VLT_DIR)/sources.f $(CLIC_DEFS) $(wildcard src/*.sv) $(wildcard test/*.sv)
 	@echo "verilating $(TB) ($(PARAM_FLAGS))..."
 	@mkdir -p $(VLT_DIR)/$(VLT_OBJ)
 	@$(VERILATOR) $(VLT_FLAGS) -f $(VLT_DIR)/sources.f > $(VLT_BUILD_LOG) 2>&1 || \
@@ -104,7 +151,7 @@ $(VSIM_DIR):
 $(VSIM_DIR)/compile.tcl: Bender.yml Bender.lock | $(VSIM_DIR)
 	$(BENDER) script vsim $(BENDER_TARGETS) -t simulation > $@
 
-$(VSIM_DIR)/compiled.stamp: $(VSIM_DIR)/compile.tcl $(wildcard src/*.sv) $(wildcard test/*.sv)
+$(VSIM_DIR)/compiled.stamp: $(VSIM_DIR)/compile.tcl $(CLIC_DEFS) $(wildcard src/*.sv) $(wildcard test/*.sv)
 	cd $(VSIM_DIR) && $(VSIM) -c -do "source compile.tcl; quit" | tee compile.log
 	@if grep -qE "^# Errors: [1-9]" $(VSIM_DIR)/compile.log; then \
 		echo "COMPILATION FAILED"; grep -E "^# \*\* Error" $(VSIM_DIR)/compile.log; false; \
@@ -116,5 +163,5 @@ vsim-sim: $(VSIM_DIR)/compiled.stamp
 		-sv_seed $(SEED) $(TB) -do "run -all; quit" | tee sim.log
 	@grep -q " result     : PASS" $(VSIM_DIR)/sim.log || (echo "SIMULATION FAILED"; false)
 
-clean:
+clean: clic-clean
 	rm -rf $(VLT_DIR) $(VSIM_DIR)

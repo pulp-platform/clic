@@ -54,16 +54,16 @@ CLICXCSW         0-1     (depends on core)     Has xscratchcsw/xscratchcswl
 This IP requires
 
 - [common_cells](https://github.com/pulp-platform/common_cells)
-- [register_interface](https://github.com/pulp-platform/register_interface)
 
 and a suitably modified core (see sections below).
 
 The [bender](https://github.com/pulp-platform/bender) and legacy
 [IPApproX](https://github.com/pulp-platform/IPApproX) flow are supported.
 
-Besides the native
-[register_interface](https://github.com/pulp-platform/register_interface) there
-is an APB wrapper available.
+`clic.sv` is an APB4 device: it exposes `psel_i`, `penable_i`, `pwrite_i`,
+`pprot_i`, `paddr_i`, `pwdata_i`, `pstrb_i`, `pready_o`, `prdata_o` and
+`pslverr_o` directly, and there is no separate bus wrapper. Byte strobes are
+honoured, so sub-word writes work.
 
 
 ## CLIC and CV32E40P
@@ -95,36 +95,130 @@ complete level/priority implementation in the works.
 
 ## Register interface
 The CLIC's register files are generated with
-[regtool](https://docs.opentitan.org/doc/rm/register_tool/) and checked into
-`src/`, so by default they require no attention of the user.
+[PeakRDL-regblock](https://github.com/SystemRDL/PeakRDL-regblock) from the
+SystemRDL descriptions in `rdl/`, and are checked into `src/`, so by default
+they require no attention of the user.
 
-To regenerate them, go to `src/gen/` and call `make all` with the environment
-variable `REGTOOL` pointing to `regtool.py` of the
-[register_interface](https://github.com/pulp-platform/register_interface)
-repository, e.g.
+`rdl/clic_regs.rdl` defines the register *types* and instantiates nothing, so
+the bit layout of every register exists in exactly one place. Everything else
+only chooses how to instantiate those types:
+
+- the four leaf wrappers put one register at offset 0 and are fed to
+  `peakrdl regblock` to produce the RTL in `src/`;
+- `rdl/clic.rdl` puts the same types at their real addresses to describe the
+  software-visible memory map, and is never fed to `regblock`.
+
+Each leaf wrapper yields one module, instantiated as follows:
+
+- `cliccfg.rdl` -> `cliccfg_reg`, instantiated once. This is the `cliccfg`
+  register of the specification; the decoder aliases the single instance into
+  both the M-mode window (`0x0000`) and the S-mode window (`0x8000`), which is
+  why it is not named after either privilege mode.
+- `clicint.rdl` -> `clicint_reg`, one instance per interrupt line. The field bit
+  positions match the specification's four byte-wide registers: `clicintip` at
+  bit 0, `clicintie` at bit 8, `clicintattr` at bits 23:16 and `clicintctl` at
+  bits 31:24.
+- `clicintv.rdl` -> `clicintv_reg`, one instance per four interrupt lines
+  (vCLIC extension, not part of the specification snapshot in `doc/`).
+- `clicvs.rdl` -> `clicvs_reg`, one instance per four VS contexts (likewise a
+  vCLIC extension).
+
+To regenerate them after editing a `.rdl` file:
 
 ```console
-    make REGTOOL=/path/to/register_interface/vendor/lowrisc_opentitan/util/regtool.py
+    make regs
 ```
 
-This generates the SystemVerilog register files and the corresponding C headers
-from the memory map descriptions in `src/gen/*.hjson`. Afterwards, `make
-install` copies the generated SystemVerilog files into `src/`, where
-`Bender.yml` and `src_files.yml` pick them up.
+PeakRDL is pinned in `pyproject.toml` and provisioned by
+[uv](https://docs.astral.sh/uv/) on demand, so no manual setup is needed. The
+generated blocks are written straight into `src/`, where `Bender.yml` and
+`src_files.yml` pick them up.
 
 Note that the number of interrupt lines is not baked into the generated
-register files: the CLIC instantiates one register block per interrupt and
-scales with the `N_SOURCE` parameter of `clic.sv`.
+register files: each leaf `.rdl` describes a single 32-bit register, the CLIC
+instantiates one such block per interrupt line, and the whole array scales with
+the `N_SOURCE` parameter of `clic.sv`. The RTL blocks therefore carry no
+elaboration-time parameters, and regenerating them never depends on how the IP
+is configured. Only the software views do.
+
+### Using this from a superproject
+The memory-map export rules live in `clic.mk`, which is meant to be imported:
+
+```make
+    CLIC_ROOT ?= $(shell bender path clic)
+    include $(CLIC_ROOT)/clic.mk
+```
+
+It provides two targets, both views of the same memory map:
+
+- `clic-hdr` writes a C header to `$(CLIC_HDR)`.
+- `clic-defs` writes a SystemVerilog `` `define `` header to `$(CLIC_DEFS)`.
+
+Neither is checked in, because both depend on how the IP is configured. Set
+`CLIC_NUM_SOURCES`, `CLIC_NUM_VSCTXTS` and `CLIC_VSCLIC` to match your
+instantiation and point `CLIC_HDR` / `CLIC_DEFS` wherever you want the output.
+
+`PEAKRDL` defaults to a bare `peakrdl` on `PATH`, as in `cheshire.mk` and
+`clint.mk`: the importing project supplies the tool, so everything it generates
+comes from one PeakRDL rather than this IP quietly running a second one. To use
+the version pinned here instead, set
+`PEAKRDL := uv run --project $(CLIC_ROOT) --group regs peakrdl`.
+
+There is deliberately no RTL generation target in the fragment. The register
+blocks take no elaboration-time parameters, so they are identical for every
+configuration and are checked into `src/`: a superproject consumes them through
+Bender and never regenerates them. `make regs` in this repository's top-level
+Makefile covers that, and is only needed when a `.rdl` file changes.
+
+To pull the register definitions into a larger address map instead, include
+`rdl/clic_regs.rdl` (for the register types) or `rdl/clic.rdl` (for the whole
+CLIC map) from your own SystemRDL and pass `-I $(CLIC_ROOT)/rdl`. Both files
+are include-guarded. This is how a SoC-level address map can describe the CLIC
+without restating any of its registers.
+
+This repository eats its own dog food: `tb_clic.sv` takes every register
+address from a generated `clic_reg_defs.svh` rather than restating them, so a
+disagreement between `rdl/clic.rdl` and the decoder in `clic.sv` shows up as a
+test failure.
+
+### What is deliberately not in the register description
+SystemRDL has no notion of the address window an access arrived through, so
+everything that depends on it lives in the decoder in `clic.sv` rather than in
+the generated blocks:
+
+- the same `clicint` storage is aliased into the M-mode window, the S-mode
+  window and one window per VS context;
+- whether an access is permitted depends on the *contents* of other registers
+  (`attr_mode`, and for the VS windows also the `v` and `vsid` fields), so an
+  S-mode or VS-mode access to a line above its privilege is dropped and reads
+  back as zero;
+- `clicint` bit 23 is forced low outside the M-mode window, so a line cannot be
+  promoted to M-mode from a less privileged window.
+
+This was equally true of the previous regtool-based flow; the register
+generator never owned any of it.
 
 ## Directory Structure
 ```
 .
 ├── doc      CLIC spec, Blockdiagrams
-├── src      RTL
-├── src/gen  Register map descriptions (hjson) and generation Makefile
+├── rdl      Register map descriptions (SystemRDL)
+├── src      RTL, including the generated register blocks
+├── test     Testbench
+├── clic.mk  Register generation rules, importable by a superproject
 ```
 
 ## License
-This project uses sourcecode from lowRISC licensed under Apache 2.0. The changes
-and additions are being made available using Apache 2.0 see LICENSE for more
-details.
+This project is licensed under a mix of Apache 2.0 and the Solderpad Hardware
+License 0.51, with the applicable license recorded in each file's
+`SPDX-License-Identifier` tag. Full texts are in `LICENSES/`.
+
+- **Apache 2.0** covers everything derived from lowRISC sources (`clic.sv`,
+  `clic_gateway.sv`, `clic_target.sv`, which carry the lowRISC copyright and
+  are upstream Apache 2.0), the register blocks generated from `rdl/`, the
+  SystemRDL descriptions themselves, and all build and tooling files.
+- **Solderpad 0.51** covers the hardware written entirely at ETH Zurich and the
+  University of Bologna (`clic_pkg.sv`, `clic_reg_adapter.sv`, `tb_clic.sv`).
+
+The root `LICENSE` file remains Apache 2.0, which is the license of the
+majority of the project and of the lowRISC code it builds on.

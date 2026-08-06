@@ -1,0 +1,14 @@
+// Copyright 2026 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+// Leaf wrapper: one clicintv_t at offset 0, fed to `peakrdl regblock` to produce
+// src/clicintv_reg.sv. The block decodes nothing above bit 1; selecting which
+// interrupt line or VS context an access targets is done by clic.sv. See
+// clic_regs.rdl for the register definition and clic.rdl for the memory map.
+
+`include "clic_regs.rdl"
+
+addrmap clicintv {
+  clicintv_t clicintv @ 0x0;
+};

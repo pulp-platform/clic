@@ -1,25 +1,19 @@
 // Copyright 2026 ETH Zurich and University of Bologna.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// SPDX-License-Identifier: Apache-2.0
-//
+// Solderpad Hardware License, Version 0.51, see LICENSES/SHL-0.51.txt for details.
+// SPDX-License-Identifier: SHL-0.51
+
 // Self-checking testbench for the CLIC.
 //
-// The DUT is clic_apb. Stimulus is black-box: interrupt sources are driven on
-// `intr_src_i` and all configuration goes over APB. Observation is white-box
+// The DUT is clic. Stimulus is black-box: interrupt sources are driven on
+// `intr_src_i` and all configuration goes over APB4. Observation is white-box
 // where the boundary does not expose enough (`claim`, `ip`), because the claim
 // pulse is what closes the claim -> ip -> selection-tree loop.
+//
+// The register addresses come from clic_reg_defs.svh, generated from
+// rdl/clic.rdl.
+
+`include "apb/typedef.svh"
+`include "clic_reg_defs.svh"
 
 module tb_clic #(
   parameter int unsigned N_SOURCE     = 16,
@@ -51,11 +45,12 @@ module tb_clic #(
   localparam logic [1:0] S_MODE = 2'b01;
   localparam logic [1:0] M_MODE = 2'b11;
 
-  // Register map, mirrored from clic.sv
-  localparam logic [31:0] MCLICCFG_ADDR   = 32'h0_0000;
-  localparam logic [31:0] MCLICINT_BASE   = 32'h0_1000;
-  localparam logic [31:0] SCLICINTV_BASE  = 32'h0_d000;
-  localparam logic [31:0] VSCLICPRIO_BASE = 32'h0_e000;
+  // Register map, taken from the generated memory map rather than restated.
+  // The base of each array is its element 0; none of these depend on N_SOURCE.
+  localparam logic [31:0] MCLICCFG_ADDR   = 32'(`CLIC_M_CLICCFG_BASE_ADDR);
+  localparam logic [31:0] MCLICINT_BASE   = 32'(`CLIC_M_CLICINT_BASE_ADDR(0));
+  localparam logic [31:0] SCLICINTV_BASE  = 32'(`CLIC_S_CLICINTV_BASE_ADDR(0));
+  localparam logic [31:0] VSCLICPRIO_BASE = 32'(`CLIC_S_VSPRIO_BASE_ADDR(0));
 
   //////////////////
   // Clock, reset //
@@ -77,9 +72,32 @@ module tb_clic #(
   // DUT and ports //
   ///////////////////
 
-  // APB request/response
+  // APB4 request/response. The CLIC takes the request and response as structs,
+  // so the driver below builds them from these flat signals.
   logic        psel, penable, pwrite, pready, pslverr;
   logic [31:0] paddr, pwdata, prdata;
+  logic [3:0]  pstrb;
+  logic [2:0]  pprot;
+
+  `APB_TYPEDEF_ALL(clic_apb, logic [31:0], logic [31:0], logic [3:0])
+
+  clic_apb_req_t apb_req;
+  clic_apb_resp_t apb_rsp;
+
+  always_comb begin
+    apb_req = '0;
+    apb_req.psel    = psel;
+    apb_req.penable = penable;
+    apb_req.pwrite  = pwrite;
+    apb_req.pprot   = pprot;
+    apb_req.paddr   = paddr;
+    apb_req.pwdata  = pwdata;
+    apb_req.pstrb   = pstrb;
+  end
+
+  assign pready  = apb_rsp.pready;
+  assign prdata  = apb_rsp.prdata;
+  assign pslverr = apb_rsp.pslverr;
 
   logic [N_SOURCE-1:0] intr_src;
 
@@ -91,9 +109,10 @@ module tb_clic #(
   logic [VSID_W-1:0] irq_vsid;
   logic              irq_kill_req, irq_kill_ack;
 
-  // The DUT is the APB-wrapped CLIC, so the bus adapter is inside the verified
-  // scope rather than bypassed.
-  clic_apb #(
+  // The CLIC is an APB4 device directly, so there is no bus adapter to bypass.
+  clic #(
+    .apb_req_t  (clic_apb_req_t),
+    .apb_rsp_t  (clic_apb_resp_t),
     .N_SOURCE   (N_SOURCE),
     .INTCTLBITS (INTCTLBITS),
     .SSCLIC     (SSCLIC),
@@ -105,14 +124,8 @@ module tb_clic #(
   ) dut (
     .clk_i          (clk),
     .rst_ni         (rst_n),
-    .penable_i      (penable),
-    .pwrite_i       (pwrite),
-    .paddr_i        (paddr),
-    .psel_i         (psel),
-    .pwdata_i       (pwdata),
-    .prdata_o       (prdata),
-    .pready_o       (pready),
-    .pslverr_o      (pslverr),
+    .apb_req_i      (apb_req),
+    .apb_rsp_o      (apb_rsp),
     .intr_src_i     (intr_src),
     .irq_valid_o    (irq_valid),
     .irq_ready_i    (irq_ready),
@@ -128,8 +141,8 @@ module tb_clic #(
 
   // Internals reached hierarchically: `ip` and `claim` are not on the boundary,
   // and the claim -> ip loop is exactly what the selection checks depend on.
-  `define CLIC_IP    dut.i_clic.ip
-  `define CLIC_CLAIM dut.i_clic.claim
+  `define CLIC_IP    dut.ip
+  `define CLIC_CLAIM dut.claim
 
   ///////////////////////////
   // Error bookkeeping     //
@@ -187,6 +200,7 @@ module tb_clic #(
   task automatic cfg_write(input logic [31:0] addr, input logic [31:0] data);
     @(posedge clk);
     psel <= 1'b1; penable <= 1'b0; pwrite <= 1'b1; paddr <= addr; pwdata <= data;
+    pstrb <= 4'hf; pprot <= 3'b0;
     @(posedge clk);
     penable <= 1'b1;
     forever begin
@@ -200,6 +214,7 @@ module tb_clic #(
   task automatic cfg_read(input logic [31:0] addr, output logic [31:0] data);
     @(posedge clk);
     psel <= 1'b1; penable <= 1'b0; pwrite <= 1'b0; paddr <= addr;
+    pstrb <= 4'h0; pprot <= 3'b0;
     @(posedge clk);
     penable <= 1'b1;
     forever begin
@@ -276,7 +291,7 @@ module tb_clic #(
     cfg_write(VSCLICPRIO_BASE + 4*(vs/4), w);
   endtask
 
-  task automatic set_mcliccfg(input logic [3:0] mnlbits, input logic [1:0] nmbits);
+  task automatic set_cliccfg(input logic [3:0] mnlbits, input logic [1:0] nmbits);
     logic [31:0] w;
     cfg_mnlbits = mnlbits;
     cfg_nmbits  = nmbits;
@@ -288,7 +303,7 @@ module tb_clic #(
 
   // Disable every source and clear all attributes.
   task automatic reset_config();
-    set_mcliccfg(4'd8, 2'd2);
+    set_cliccfg(4'd8, 2'd2);
     for (int unsigned i = 0; i < N_SOURCE; i++) begin
       set_int(i, 8'h00, M_MODE, 1'b0, 1'b0, 1'b0);
     end
@@ -745,6 +760,7 @@ module tb_clic #(
     int unsigned waited;
     @(posedge clk);
     psel <= 1'b1; penable <= 1'b0; pwrite <= 1'b0; paddr <= addr;
+    pstrb <= 4'h0; pprot <= 3'b0;
     @(posedge clk);
     penable <= 1'b1;
     waited = 0;
@@ -863,6 +879,8 @@ module tb_clic #(
     pwrite         = 1'b0;
     paddr          = '0;
     pwdata         = '0;
+    pstrb          = '0;
+    pprot          = '0;
     intr_src       = '0;
     irq_ready      = 1'b0;
     kill_ack_en    = 1'b1;

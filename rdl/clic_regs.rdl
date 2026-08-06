@@ -1,0 +1,156 @@
+// Copyright 2026 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+// CLIC register type definitions.
+//
+// This file defines register *types* and instantiates nothing, so it is the
+// single source of truth for the bit layout of every CLIC register. It is
+// included by two kinds of consumer:
+//
+//   - the leaf wrappers in this directory (cliccfg.rdl, clicint.rdl, ...),
+//     each of which instantiates one type at offset 0 and is fed to
+//     `peakrdl regblock` to produce the RTL in src/;
+//   - clic.rdl, which instantiates the same types at their real addresses to
+//     describe the software-visible memory map.
+//
+// A superproject (Cheshire, for example) can include this file directly to
+// reuse the register definitions without pulling in either topology.
+
+`ifndef CLIC_REGS_RDL
+`define CLIC_REGS_RDL
+
+// CLIC interrupt pending, enable, attribute and control.
+//
+// The field positions mirror the four byte-wide registers of the
+// specification: clicintip at bit 0, clicintie at bit 8, clicintattr at bits
+// 23:16 and clicintctl at bits 31:24.
+reg clicint_t {
+  name = "CLICINT";
+  desc = "CLIC interrupt pending, enable, attribute and control";
+
+  regwidth = 32;
+  accesswidth = 32;
+
+  // Pending is driven by the gateway every cycle (`we` is tied high in
+  // clic_reg_adapter), but a software write in the same cycle must win so that
+  // writing IP can raise a software interrupt. `precedence = sw` is what the
+  // OpenTitan prim_subreg arbiter did with SWACCESS="RW":
+  //   wr_data = we ? wd : d  // SW higher priority
+  field {
+    desc = "interrupt pending for interrupt";
+    sw = rw;
+    hw = rw;
+    we;
+    precedence = sw;
+  } ip[0:0] = 0;
+
+  field {
+    desc = "interrupt enable for interrupt";
+    sw = rw;
+    hw = r;
+  } ie[8:8] = 0;
+
+  field {
+    desc = "enable hardware vectoring for this interrupt";
+    sw = rw;
+    hw = r;
+  } attr_shv[16:16] = 0;
+
+  field {
+    desc = "specify trigger type for this interrupt";
+    sw = rw;
+    hw = r;
+  } attr_trig[18:17] = 0;
+
+  field {
+    desc = "privilege mode of this interrupt";
+    sw = rw;
+    hw = r;
+  } attr_mode[23:22] = 3;
+
+  field {
+    desc = "interrupt control for interrupt";
+    sw = rw;
+    hw = r;
+  } ctl[31:24] = 0;
+};
+
+// CLIC configuration (`cliccfg` in the specification).
+//
+// Note: the hjson this replaces carried an explicit read-only "reserved" field
+// over bits 31:28 to work around regtool rejecting full 32-bit writes to a
+// register whose fields did not cover the whole word. PeakRDL drops writes to
+// unmapped bits and reads them as zero, so no such placeholder is needed.
+reg cliccfg_t {
+  name = "CLICCFG";
+  desc = "CLIC configuration";
+
+  regwidth = 32;
+  accesswidth = 32;
+
+  field {
+    desc = "number of interrupt level bits in machine mode";
+    sw = rw;
+    hw = r;
+  } mnlbits[3:0] = 0;
+
+  field {
+    desc = "number of privilege mode bits";
+    sw = rw;
+    hw = r;
+  } nmbits[5:4] = 0;
+
+  field {
+    desc = "number of interrupt level bits in supervisor mode";
+    sw = rw;
+    hw = r;
+  } snlbits[19:16] = 0;
+
+  field {
+    desc = "number of interrupt level bits in user mode";
+    sw = rw;
+    hw = r;
+  } unlbits[27:24] = 0;
+};
+
+// CLIC interrupt virtualization (vCLIC extension).
+//
+// One register covers four interrupt lines, one per byte lane. Per-lane access
+// filtering is applied by the decoder in clic.sv, not here.
+reg clicintv_t {
+  name = "CLICINTV";
+  desc = "CLIC interrupt virtualization";
+
+  regwidth = 32;
+  accesswidth = 32;
+
+  field { desc = "interrupt delegated to VS-mode"; sw = rw; hw = r; } v0[0:0]      = 0;
+  field { desc = "interrupt VS id";                sw = rw; hw = r; } vsid0[7:2]   = 0;
+  field { desc = "interrupt delegated to VS-mode"; sw = rw; hw = r; } v1[8:8]      = 0;
+  field { desc = "interrupt VS id";                sw = rw; hw = r; } vsid1[15:10] = 0;
+  field { desc = "interrupt delegated to VS-mode"; sw = rw; hw = r; } v2[16:16]    = 0;
+  field { desc = "interrupt VS id";                sw = rw; hw = r; } vsid2[23:18] = 0;
+  field { desc = "interrupt delegated to VS-mode"; sw = rw; hw = r; } v3[24:24]    = 0;
+  field { desc = "interrupt VS id";                sw = rw; hw = r; } vsid3[31:26] = 0;
+};
+
+// CLIC virtual supervisor priority (vCLIC extension).
+//
+// One register covers four VS contexts, one per byte lane. The field width
+// here fixes the usable range of the VSPRIO_W parameter of clic.sv: widening a
+// priority field means widening it here too.
+reg vsprio_t {
+  name = "VSPRIO";
+  desc = "CLIC virtual supervisor priority";
+
+  regwidth = 32;
+  accesswidth = 32;
+
+  field { desc = "VS0 priority"; sw = rw; hw = r; } prio0[0:0]   = 0;
+  field { desc = "VS1 priority"; sw = rw; hw = r; } prio1[8:8]   = 0;
+  field { desc = "VS2 priority"; sw = rw; hw = r; } prio2[16:16] = 0;
+  field { desc = "VS3 priority"; sw = rw; hw = r; } prio3[24:24] = 0;
+};
+
+`endif // CLIC_REGS_RDL
