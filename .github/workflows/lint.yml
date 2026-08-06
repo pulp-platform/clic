@@ -40,6 +40,39 @@ jobs:
           false
         fi
 
+  # The register blocks in src/ are generated from rdl/ and checked in, so they
+  # can silently drift from their source. Regenerate them and require the result
+  # to match. PeakRDL embeds no timestamp, path or version in its output, and
+  # --locked pins the generator, so this is a content comparison and not a
+  # source of flakes.
+  regs-up-to-date:
+    runs-on: ubuntu-latest
+    steps:
+    -
+      name: Checkout
+      uses: actions/checkout@v7
+    -
+      name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    -
+      name: Regenerate register blocks
+      run: make regs PEAKRDL="uv run --locked --group regs peakrdl"
+    -
+      name: Check the checked-in files match
+      run: |
+        if ! git diff --exit-code -- src/; then
+          echo "::error::Generated register files are out of date. Run 'make regs' and commit the result."
+          exit 1
+        fi
+    -
+      name: Check the memory map still elaborates
+      # rdl/clic.rdl produces no checked-in artefact, so nothing above compiles
+      # it. Exporting it here catches errors the leaf blocks cannot, such as
+      # windows overlapping at the maximum configuration.
+      run: make clic-defs clic-hdr PEAKRDL="uv run --locked --group regs peakrdl"
+
   lint-sv:
     runs-on: ubuntu-latest
     steps:
