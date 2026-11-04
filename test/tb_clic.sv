@@ -30,6 +30,7 @@ module tb_clic #(
   parameter int unsigned N_VSCTXTS    = 4,
   parameter bit          VSPRIO       = 1,
   parameter int unsigned VSPRIO_W     = 1,
+  parameter int unsigned N_PIPE       = 0,
   // Cycles to wait after freezing stimulus before the selection result is
   // required to match the reference model. Grows with clic_target pipelining.
   parameter int unsigned SettleCycles  = 8,
@@ -101,7 +102,8 @@ module tb_clic #(
     .VSCLIC     (VSCLIC),
     .N_VSCTXTS  (N_VSCTXTS),
     .VSPRIO     (VSPRIO),
-    .VSPRIO_W   (VSPRIO_W)
+    .VSPRIO_W   (VSPRIO_W),
+    .N_PIPE     (N_PIPE)
   ) dut (
     .clk_i          (clk),
     .rst_ni         (rst_n),

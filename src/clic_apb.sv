@@ -33,6 +33,7 @@ module clic_apb
                                         // range that allows up to 64 contexts (at least 512KiB)
   parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
   parameter int  VSPRIO_W = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
+  parameter int  N_PIPE = 0,         // 1: register the selected interrupt in the target (one cycle more)
   // do not edit below, these are derived
   localparam int unsigned REG_BUS_ADDR_WIDTH = 32,
   localparam int unsigned REG_BUS_DATA_WIDTH = 32,
@@ -107,6 +108,7 @@ module clic_apb
     .N_VSCTXTS ( N_VSCTXTS  ),
     .VSPRIO    ( VSPRIO     ),
     .VSPRIO_W  ( VSPRIO_W   ),
+    .N_PIPE    ( N_PIPE     ),
     .reg_req_t ( reg_req_t  ),
     .reg_rsp_t ( reg_rsp_t  )
   ) i_clic (
