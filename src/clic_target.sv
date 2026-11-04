@@ -36,6 +36,9 @@ module clic_target
   parameter int unsigned ModeWidth   = 2,
   parameter int unsigned VsidWidth   = 6,
   parameter int unsigned VsprioWidth = 8,
+  // 1: register the selected interrupt (the tree's root) before the handshake
+  // logic, which offers it one cycle later
+  parameter int unsigned N_PIPE      = 0,
 
   // derived parameters do not change this
   localparam int SrcWidth  = $clog2(N_SOURCE)  // derived parameter
@@ -165,21 +168,43 @@ module clic_target
   end : gen_tree
 
   logic irq_valid_d, irq_valid_q;
-  logic irq_root_valid;
+  logic tree_valid, irq_root_valid;
   logic irq_kill_req_d, irq_kill_req_q;
   logic higher_irq;
-  logic [SrcWidth-1:0]  irq_root_id, irq_id_d, irq_id_q;
-  prio_t                irq_max_d, irq_max_q;
+  logic clear_root;
+  logic [SrcWidth-1:0]  tree_id, irq_root_id, irq_id_d, irq_id_q;
+  prio_t                irq_root_max, irq_max_d, irq_max_q;
   logic [VsidWidth-1:0] vsid_max_d, vsid_max_q;
   logic                 shv_max_d, shv_max_q;
 
   // the results can be found at the tree root
   // TODO: remove useless inequality comparison
-  assign irq_root_valid = (max_tree[0] > '0) ? is_tree[0] : 1'b0;
-  assign irq_root_id    = (is_tree[0]) ? id_tree[0] : '0;
+  assign tree_valid = (max_tree[0] > '0) ? is_tree[0] : 1'b0;
+  assign tree_id    = (is_tree[0]) ? id_tree[0] : '0;
+
+  if (N_PIPE == 0) begin : gen_root
+    assign irq_root_valid = tree_valid;
+    assign irq_root_id    = tree_id;
+    assign irq_root_max   = max_tree[0];
+  end else if (N_PIPE == 1) begin : gen_root_q
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+        irq_root_valid <= 1'b0;
+        irq_root_id    <= '0;
+        irq_root_max   <= '0;
+      end else begin
+        // The interrupt claimed in this cycle leaves the gateway at this clock
+        // edge: its copy here is dropped, so it is not offered again
+        irq_root_valid <= tree_valid & ~clear_root;
+        irq_root_id    <= tree_id;
+        irq_root_max   <= max_tree[0];
+      end
+    end
+  end else begin : gen_root_invalid
+    $fatal(1, "clic_target: N_PIPE must be 0 or 1");
+  end
 
   // higher level interrupt is available than the one we are currently processing
-  // TODO: maybe add pipe?
   assign higher_irq = irq_root_id != irq_id_q;
 
   // handshake logic to send interrupt to core
@@ -195,6 +220,7 @@ module clic_target
     vsid_max_d = '0;
     shv_max_d = '0;
     claim_o = '0;
+    clear_root = 1'b0;
 
     irq_valid_d = 1'b0;
     irq_kill_req_d = 1'b0;
@@ -206,7 +232,7 @@ module clic_target
       IDLE:
         if (irq_root_valid) begin
           irq_id_d = irq_root_id;
-          irq_max_d = max_tree[0];
+          irq_max_d = irq_root_max;
           vsid_max_d = vsid_i[irq_root_id];
           shv_max_d = shv_i[irq_root_id];
           irq_valid_d = 1'b1;
@@ -241,6 +267,7 @@ module clic_target
       // generate interrupt claim pulse
       CLAIM: begin
         claim_o[irq_id_q] = 1'b1;
+        clear_root = 1'b1;
 
         irq_state_d = IDLE;
       end
