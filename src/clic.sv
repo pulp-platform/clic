@@ -343,6 +343,13 @@ module clic
   logic              intv [N_SOURCE]; // Per-IRQ virtualization bit
 
   logic [VSPRIO_W-1:0] vsprio [MAX_VSCTXTS]; // Per-VS priority
+  // Per-VS priority as the target sees it: zero beyond the VS IDs in use, so
+  // each interrupt selects its VS priority among N_VSCTXTS + 1 entries
+  logic [VSPRIO_W-1:0] vsprio_used [MAX_VSCTXTS];
+
+  for (genvar v = 0; v < MAX_VSCTXTS; v++) begin : gen_vsprio_used
+    assign vsprio_used[v] = (v <= N_VSCTXTS) ? vsprio[v] : '0;
+  end
 
   logic [N_SOURCE-1:0] le; // 0: level-sensitive 1: edge-sensitive
   logic [N_SOURCE-1:0] ip;
@@ -390,7 +397,7 @@ module clic
     .intv_i      (intv),
     .vsid_i      (vsid),
 
-    .vsprio_i    (vsprio),
+    .vsprio_i    (vsprio_used),
 
     .claim_o     (claim),
 
@@ -543,23 +550,32 @@ module clic
         if (vs_addr_ok) reg_all_vs_rsp = reg_vs_rsp[vs_addr];
       end
 
+      // VS priority registers exist for the VS IDs in use: 0 (no VS) and the
+      // N_VSCTXTS contexts. The blocks beyond them read as zero.
       for(genvar i = 0; i < (MAX_VSCTXTS/4); i++) begin : gen_clic_vs
 
-        clicvs_reg_top #(
-          .reg_req_t (reg_req_t),
-          .reg_rsp_t (reg_rsp_t)
-        ) i_clicvs_reg_top (
-          .clk_i,
-          .rst_ni,
+        if (i < ceil_div(N_VSCTXTS + 1, 4)) begin : gen_regs
+          clicvs_reg_top #(
+            .reg_req_t (reg_req_t),
+            .reg_rsp_t (reg_rsp_t)
+          ) i_clicvs_reg_top (
+            .clk_i,
+            .rst_ni,
 
-          .reg_req_i (reg_vs_req[i]),
-          .reg_rsp_o (reg_vs_rsp[i]),
+            .reg_req_i (reg_vs_req[i]),
+            .reg_rsp_o (reg_vs_rsp[i]),
 
-          .reg2hw (clicvs_reg2hw[i]),
-          // .hw2reg (clicvs_hw2reg[i]),
+            .reg2hw (clicvs_reg2hw[i]),
+            // .hw2reg (clicvs_hw2reg[i]),
 
-          .devmode_i  (1'b1)
-        );
+            .devmode_i  (1'b1)
+          );
+        end else begin : gen_none
+          assign clicvs_reg2hw[i]     = '0;
+          assign reg_vs_rsp[i].rdata  = '0;
+          assign reg_vs_rsp[i].error  = 1'b0;
+          assign reg_vs_rsp[i].ready  = 1'b1;
+        end
 
       end
 
