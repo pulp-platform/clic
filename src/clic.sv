@@ -39,6 +39,7 @@ module clic
                                         // range that allows up to 64 contexts (at least 512KiB)
   parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
   parameter int  VSPRIO_W = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
+  parameter int  N_PIPE = 0,         // 1: register the selected interrupt in the target (one cycle more)
 
   // do not edit below, these are derived
   localparam int SRC_W = $clog2(N_SOURCE)
@@ -381,7 +382,8 @@ module clic
     .PrioWidth   (INTCTLBITS),
     .ModeWidth   (2),
     .VsidWidth   (VSID_W),
-    .VsprioWidth (VSPRIO_W)
+    .VsprioWidth (VSPRIO_W),
+    .N_PIPE      (N_PIPE)
   ) i_clic_target (
     .clk_i,
     .rst_ni,
