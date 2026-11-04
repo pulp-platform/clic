@@ -94,37 +94,34 @@ There is very basic support for the CLIC in
 complete level/priority implementation in the works.
 
 ## Register interface
-By default the CLIC's register file is manually written requiring no attention
-of the user.
+The CLIC's register files are generated with
+[regtool](https://docs.opentitan.org/doc/rm/register_tool/) and checked into
+`src/`, so by default they require no attention of the user.
 
-Alternatively, [regtool](https://docs.opentitan.org/doc/rm/register_tool/) can
-be used to generate the register file. For that, go to `src/gen/` and call `make
-all` with the environment variable `REGTOOL` pointing to `regtool.py` of the
+To regenerate them, go to `src/gen/` and call `make all` with the environment
+variable `REGTOOL` pointing to `regtool.py` of the
 [register_interface](https://github.com/pulp-platform/register_interface)
-repository and `NUM_INTERRUPT` and `CLICINTCTLBITS` appropriately set. These
-three environment variables can be passed when using make, e.g. 
+repository, e.g.
 
 ```console
-    make NUM_INTERRUPT=128 CLICINTCTLBITS=4
+    make REGTOOL=/path/to/register_interface/vendor/lowrisc_opentitan/util/regtool.py
 ```
 
-Finally, make sure your `src_files.yml` or `Bender.yml` points to
+This generates the SystemVerilog register files and the corresponding C headers
+from the memory map descriptions in `src/gen/*.hjson`. Afterwards, `make
+install` copies the generated SystemVerilog files into `src/`, where
+`Bender.yml` and `src_files.yml` pick them up.
 
-- `src/gen/clic_reg_pkg.sv`
-- `src/gen/clic_reg_top.sv`
-- `src/gen/clic_reg_adapater.sv`
-
-`regtool` has various limitations on how the register map can look like,
-requiring the memory map description (`src/gen/clic.hjson`) to be derived from a
-template (`src/gen/clic.hjson.tpl`), resulting in rather unwieldy code and
-documentation.
+Note that the number of interrupt lines is not baked into the generated
+register files: the CLIC instantiates one register block per interrupt and
+scales with the `N_SOURCE` parameter of `clic.sv`.
 
 ## Directory Structure
 ```
 .
 ├── doc      CLIC spec, Blockdiagrams
 ├── src      RTL
-├── src/gen  Templates and python scripts
+├── src/gen  Register map descriptions (hjson) and generation Makefile
 ```
 
 ## License

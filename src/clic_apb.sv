@@ -19,9 +19,20 @@
 `include "register_interface/typedef.svh"
 `include "register_interface/assign.svh"
 
-module clic_apb #(
+module clic_apb
+  import clic_pkg::*;
+#(
   parameter int  N_SOURCE = 256,
   parameter int  INTCTLBITS = 8,
+  parameter bit  SSCLIC = 0,
+  parameter bit  USCLIC = 0,
+  parameter bit  VSCLIC = 0, // enable vCLIC (requires SSCLIC)
+  // vCLIC dependent parameters
+  parameter int unsigned N_VSCTXTS = 0, // Number of Virtual Contexts supported.
+                                        // This implementation assumes CLIC is mapped to an address
+                                        // range that allows up to 64 contexts (at least 512KiB)
+  parameter bit  VSPRIO = 0,            // Enable VS prioritization (requires VSCLIC)
+  parameter int  VSPRIO_W = 1,       // N of VS priority bits (must be set accordingly to the `clicvs` register width)
   // do not edit below, these are derived
   localparam int unsigned REG_BUS_ADDR_WIDTH = 32,
   localparam int unsigned REG_BUS_DATA_WIDTH = 32,
@@ -50,18 +61,29 @@ module clic_apb #(
   output [7:0]                          irq_level_o,
   output logic                          irq_shv_o,
   output logic [1:0]                    irq_priv_o,
+  output logic [VSID_W-1:0]             irq_vsid_o,
+  output logic                          irq_v_o,
   output logic                          irq_kill_req_o,
   input logic                           irq_kill_ack_i
 
 );
 
+  typedef logic [REG_BUS_ADDR_WIDTH  -1:0] addr_t;
+  typedef logic [REG_BUS_DATA_WIDTH  -1:0] data_t;
+  typedef logic [REG_BUS_DATA_WIDTH/8-1:0] strb_t;
 
-  REG_BUS #(
-    .ADDR_WIDTH (REG_BUS_ADDR_WIDTH),
-    .DATA_WIDTH (REG_BUS_DATA_WIDTH)
-  ) reg_bus (clk_i);
+  `REG_BUS_TYPEDEF_REQ(reg_req_t, addr_t, data_t, strb_t)
+  `REG_BUS_TYPEDEF_RSP(reg_rsp_t, data_t)
 
-  apb_to_reg i_apb_to_reg (
+  reg_req_t clic_req;
+  reg_rsp_t clic_rsp;
+
+  // NOTE: `Feedthrough` must currently stay 0 for bug inside apb_to_reg_v2 adapter
+  apb_to_reg_v2 #(
+    .Feedthrough ( 1'b0 ),
+    .reg_req_t ( reg_req_t ),
+    .reg_rsp_t ( reg_rsp_t )
+  ) i_apb_to_reg (
     .clk_i,
     .rst_ni,
     .penable_i,
@@ -72,40 +94,27 @@ module clic_apb #(
     .prdata_o,
     .pready_o,
     .pslverr_o,
-    .reg_o     (reg_bus)
+    .reg_req_o ( clic_req ),
+    .reg_rsp_i ( clic_rsp )
   );
 
-  typedef logic [REG_BUS_ADDR_WIDTH-1:0] addr_t;
-  typedef logic [REG_BUS_DATA_WIDTH-1:0] data_t;
-  typedef logic [REG_BUS_DATA_WIDTH/8-1:0] strb_t;
-
-  `REG_BUS_TYPEDEF_REQ(reg_a32_d32_req_t, addr_t, data_t, strb_t)
-  `REG_BUS_TYPEDEF_RSP(reg_a32_d32_rsp_t, data_t)
-
-  reg_a32_d32_req_t clic_req;
-  reg_a32_d32_rsp_t clic_rsp;
-
-  assign clic_req.addr  = reg_bus.addr;
-  assign clic_req.write = reg_bus.write;
-  assign clic_req.wdata = reg_bus.wdata;
-  assign clic_req.wstrb = reg_bus.wstrb;
-  assign clic_req.valid = reg_bus.valid;
-
-  assign reg_bus.rdata = clic_rsp.rdata;
-  assign reg_bus.error = clic_rsp.error;
-  assign reg_bus.ready = clic_rsp.ready;
-
   clic #(
-    .N_SOURCE  ( N_SOURCE          ),
-    .INTCTLBITS( INTCTLBITS        ),
-    .reg_req_t ( reg_a32_d32_req_t ),
-    .reg_rsp_t ( reg_a32_d32_rsp_t )
+    .N_SOURCE  ( N_SOURCE   ),
+    .INTCTLBITS( INTCTLBITS ),
+    .SSCLIC    ( SSCLIC     ),
+    .USCLIC    ( USCLIC     ),
+    .VSCLIC    ( VSCLIC     ),
+    .N_VSCTXTS ( N_VSCTXTS  ),
+    .VSPRIO    ( VSPRIO     ),
+    .VSPRIO_W  ( VSPRIO_W   ),
+    .reg_req_t ( reg_req_t  ),
+    .reg_rsp_t ( reg_rsp_t  )
   ) i_clic (
     .clk_i,
     .rst_ni,
      // Bus Interface
-    .reg_req_i   ( clic_req       ),
-    .reg_rsp_o   ( clic_rsp       ),
+    .reg_req_i   ( clic_req ),
+    .reg_rsp_o   ( clic_rsp ),
     // Interrupt Sources
     .intr_src_i,
     // Interrupt notification to core
@@ -115,6 +124,8 @@ module clic_apb #(
     .irq_level_o,
     .irq_shv_o,
     .irq_priv_o,
+    .irq_vsid_o,
+    .irq_v_o,
     .irq_kill_req_o,
     .irq_kill_ack_i
   );

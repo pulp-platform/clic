@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-06
+### Added
+- Standalone testbench
+- Slang linting
+
+### Fixed
+- Bender dependencies update
+- CLIC APB wrapper
+- Out-of-bound address decoding
+- Unused files removal
+
 ## [3.0.0] - 2025-09-22
 ### Added
 - VS mode support through custom virtualization extension (vCLIC)

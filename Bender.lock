@@ -1,0 +1,48 @@
+packages:
+  apb:
+    revision: af1d5cb90ee9321321e4e1f7d694fdc259be116e
+    version: null
+    source:
+      Git: https://github.com/pulp-platform/apb.git
+    dependencies:
+    - common_cells
+  axi:
+    revision: 0d287864c11cf2f344452a63f8d1e5e9ce668f2b
+    version: null
+    source:
+      Git: https://github.com/hopang-0221/axi.git
+    dependencies:
+    - common_cells
+    - common_verification
+    - tech_cells_generic
+  common_cells:
+    revision: e73baaec2ca665cd80c3c384e9258e35242b829c
+    version: null
+    source:
+      Git: https://github.com/pulp-platform/common_cells.git
+    dependencies:
+    - common_verification
+    - tech_cells_generic
+  common_verification:
+    revision: fb1885f48ea46164a10568aeff51884389f67ae3
+    version: 0.2.5
+    source:
+      Git: https://github.com/pulp-platform/common_verification.git
+    dependencies: []
+  register_interface:
+    revision: 84a6857c1ca37c0ad455a384a58a855b19317b21
+    version: null
+    source:
+      Git: https://github.com/pulp-platform/register_interface.git
+    dependencies:
+    - apb
+    - axi
+    - common_cells
+    - common_verification
+  tech_cells_generic:
+    revision: 3a3de73632a06826b1bd9c65a0a2e92b32016845
+    version: 0.2.14
+    source:
+      Git: https://github.com/pulp-platform/tech_cells_generic.git
+    dependencies:
+    - common_verification

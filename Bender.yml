@@ -21,8 +21,12 @@ package:
     - "Alessandro Ottaviano <aottaviano@iis.ee.ethz.ch>"
     - "Enrico Zelioli <ezelioli@iis.ee.ethz.ch>"
 
+remotes:
+  pulp: "https://github.com/pulp-platform"
+
 dependencies:
-  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 2.0.0-beta }
+  common_cells: { version: 2.0.0-beta }
+  common_verification: { version: 0.2.5 }
   register_interface: { git: "https://github.com/pulp-platform/register_interface.git", rev: common-cells-v2 }
 
 sources:
@@ -40,4 +44,7 @@ sources:
   - src/clic_target.sv
   - src/clic_apb.sv
   - src/clic.sv
+  - target: test_clic
+    files:
+      - test/tb_clic.sv
 
